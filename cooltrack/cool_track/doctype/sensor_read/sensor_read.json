@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-08 14:21:22.194212",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sensor_id",
+  "sensor_type",
+  "temperature",
+  "humidity",
+  "voltage",
+  "signal_strength",
+  "sequence_number",
+  "gateway_id",
+  "relay_id",
+  "sensor_rssi",
+  "coordinates",
+  "timestamp"
+ ],
+ "fields": [
+  {
+   "fieldname": "sensor_id",
+   "fieldtype": "Data",
+   "label": "Sensor ID"
+  },
+  {
+   "fieldname": "sensor_type",
+   "fieldtype": "Data",
+   "label": "Sensor Type"
+  },
+  {
+   "fieldname": "temperature",
+   "fieldtype": "Data",
+   "label": "Temperature"
+  },
+  {
+   "fieldname": "humidity",
+   "fieldtype": "Data",
+   "label": "Humidity"
+  },
+  {
+   "fieldname": "voltage",
+   "fieldtype": "Data",
+   "label": "Voltage"
+  },
+  {
+   "fieldname": "signal_strength",
+   "fieldtype": "Data",
+   "label": "Signal Strength"
+  },
+  {
+   "fieldname": "sequence_number",
+   "fieldtype": "Data",
+   "label": "Sequence Number"
+  },
+  {
+   "fieldname": "gateway_id",
+   "fieldtype": "Data",
+   "label": "Gateway ID"
+  },
+  {
+   "fieldname": "relay_id",
+   "fieldtype": "Data",
+   "label": "Relay ID"
+  },
+  {
+   "fieldname": "sensor_rssi",
+   "fieldtype": "Data",
+   "label": "Sensor RSSI"
+  },
+  {
+   "fieldname": "coordinates",
+   "fieldtype": "Data",
+   "label": "Coordinates"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Data",
+   "label": "Timestamp"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-08 14:23:09.806780",
+ "modified_by": "Administrator",
+ "module": "Cool Track",
+ "name": "Sensor Read",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
