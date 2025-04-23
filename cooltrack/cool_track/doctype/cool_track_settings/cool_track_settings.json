@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-21 18:37:04.527337",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "api_url",
+  "approval_section",
+  "require_gateway_approval",
+  "require_sensor_approval",
+  "log_approval_activities",
+  "column_break_cjnf",
+  "default_approval_status",
+  "notifications_section",
+  "send_approval_notifications"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "When enabled, all new gateways must be manually approved by an administrator before they can connect to the server.",
+   "fieldname": "require_gateway_approval",
+   "fieldtype": "Check",
+   "label": "Require Gateway Approval"
+  },
+  {
+   "default": "0",
+   "description": "When checked, all new sensors must be reviewed and approved by an administrator before they can transmit data to the server.",
+   "fieldname": "require_sensor_approval",
+   "fieldtype": "Check",
+   "label": "Require Sensor Approval"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "fieldname": "notifications_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "default": "0",
+   "description": "Maintain detailed audit logs of all approval/rejection activities.",
+   "fieldname": "log_approval_activities",
+   "fieldtype": "Check",
+   "label": "Log Approval Activities"
+  },
+  {
+   "fieldname": "column_break_cjnf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Initial status for new devices when approval is required.",
+   "fieldname": "default_approval_status",
+   "fieldtype": "Select",
+   "label": "Default Approval Status",
+   "options": "Pending\nApproved\nRejected"
+  },
+  {
+   "default": "0",
+   "description": "Enable to send email notifications to administrators when new gateways or sensors require approval.",
+   "fieldname": "send_approval_notifications",
+   "fieldtype": "Check",
+   "label": "Send Approval Notifications"
+  },
+  {
+   "fieldname": "api_url",
+   "fieldtype": "Data",
+   "label": "API URL"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-04-21 18:57:51.144650",
+ "modified_by": "Administrator",
+ "module": "Cool Track",
+ "name": "Cool Track Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2025-04-08 14:21:22.194212",
  "doctype": "DocType",
@@ -80,10 +81,9 @@
    "label": "Timestamp"
   }
  ],
- "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-08 14:23:09.806780",
+ "modified": "2025-04-21 16:23:55.396018",
  "modified_by": "Administrator",
  "module": "Cool Track",
  "name": "Sensor Read",
@@ -102,7 +102,6 @@
    "write": 1
   }
  ],
- "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

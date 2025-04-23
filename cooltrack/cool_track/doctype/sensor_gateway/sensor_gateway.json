@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2025-04-21 14:30:04.748192",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_information_section",
+  "gateway_type",
+  "model_number",
+  "column_break_ucde",
+  "status",
+  "approval_status",
+  "serial_number",
+  "connectivity_details_section",
+  "ip_address",
+  "sim_card_number",
+  "usb_port",
+  "column_break_uylm",
+  "mac_address",
+  "network_provider",
+  "location_and_assignment",
+  "location",
+  "column_break_ihwu",
+  "installation_date",
+  "metadata_section",
+  "firmware_version",
+  "number_of_transmissions",
+  "column_break_pfnr",
+  "last_maintenance",
+  "last_heartbeat",
+  "section_break_rxpi",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "location",
+   "fieldtype": "Link",
+   "label": "Location",
+   "options": "Address"
+  },
+  {
+   "fieldname": "gateway_type",
+   "fieldtype": "Link",
+   "label": "Gateway Type",
+   "options": "Sensor Gateway Type"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive\nMaintenance\nDecommissioned"
+  },
+  {
+   "fieldname": "model_number",
+   "fieldtype": "Data",
+   "label": "Model Number"
+  },
+  {
+   "fieldname": "serial_number",
+   "fieldtype": "Data",
+   "label": "Serial Number"
+  },
+  {
+   "fieldname": "basic_information_section",
+   "fieldtype": "Section Break",
+   "label": "Basic Information"
+  },
+  {
+   "fieldname": "column_break_ucde",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "connectivity_details_section",
+   "fieldtype": "Section Break",
+   "label": "Connectivity Details"
+  },
+  {
+   "fieldname": "ip_address",
+   "fieldtype": "Data",
+   "label": "IP Address"
+  },
+  {
+   "fieldname": "sim_card_number",
+   "fieldtype": "Data",
+   "label": "Sim Card Number"
+  },
+  {
+   "fieldname": "usb_port",
+   "fieldtype": "Data",
+   "label": "USB Port"
+  },
+  {
+   "fieldname": "column_break_uylm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mac_address",
+   "fieldtype": "Data",
+   "label": "MAC Address"
+  },
+  {
+   "fieldname": "network_provider",
+   "fieldtype": "Data",
+   "label": "Network Provider"
+  },
+  {
+   "fieldname": "location_and_assignment",
+   "fieldtype": "Section Break",
+   "label": "Location & Assignment"
+  },
+  {
+   "fieldname": "column_break_ihwu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "installation_date",
+   "fieldtype": "Date",
+   "label": "Installation Date"
+  },
+  {
+   "fieldname": "metadata_section",
+   "fieldtype": "Section Break",
+   "label": "Metadata"
+  },
+  {
+   "fieldname": "firmware_version",
+   "fieldtype": "Data",
+   "label": "Firmware Version"
+  },
+  {
+   "fieldname": "number_of_transmissions",
+   "fieldtype": "Int",
+   "label": "Number of Transmissions"
+  },
+  {
+   "fieldname": "column_break_pfnr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_maintenance",
+   "fieldtype": "Date",
+   "label": "Last Maintenance"
+  },
+  {
+   "fieldname": "last_heartbeat",
+   "fieldtype": "Datetime",
+   "label": "Last Heartbeat"
+  },
+  {
+   "fieldname": "section_break_rxpi",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "approval_status",
+   "fieldtype": "Select",
+   "label": "Approval Status",
+   "options": "Pending\nApproved\nRejected"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-21 21:26:55.643426",
+ "modified_by": "Administrator",
+ "module": "Cool Track",
+ "name": "Sensor Gateway",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

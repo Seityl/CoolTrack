@@ -4,30 +4,36 @@ import ProtectedRoute from "./utils/auth/ProtectedRoute";
 import "@radix-ui/themes/styles.css";
 import { Theme, Spinner, Flex } from "@radix-ui/themes";
 import Workspace from "./components/layout/Workspace";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
-const ItemList = lazy(() => import("./pages/items/ItemList"));
-const Uom = lazy(() => import("./pages/items/Uom"));
-const ItemGroup = lazy(() => import("./pages/items/ItemGroup"));
-const SupplierList = lazy(() => import("./pages/suppliers/SupplierList"));
-const HSCodeList = lazy(() => import("./pages/items/HSCodeList"));
-const SupplierGroupList = lazy(() => import("./pages/suppliers/SupplierGroupList"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const SignUp = lazy(() => import("./pages/auth/SignUp"));
-const Profile = lazy(() => import("./pages/user/Profile"));
-const Settings = lazy(() => import("./pages/utils/Settings"));
-const InvoiceList = lazy(() => import("./pages/invoices/InvoiceList"));
-const UploadInvoice = lazy(() => import("./pages/invoices/UploadInvoice"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ProfilePage = lazy(() => import("./pages/user/ProfilePage"));
+const NotificationsPage = lazy(() => import("./pages/user/NotificationsPage"));
+const GatewayList = lazy(() => import("./pages/gateway/GatewayList"));
+const GatewayPage = lazy(() => import("./pages/gateway/GatewayPage"));
+const SensorList = lazy(() => import("./pages/sensor/SensorList"));
+const SensorPage = lazy(() => import("./pages/sensor/SensorPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const HistoryPage = lazy(() => import("./pages/HistoryPage"));
 
-const RedirectIfLoggedIn = ({ children }: { children: JSX.Element }) => {
+interface RedirectIfLoggedInProps {
+  children: JSX.Element;
+}
+
+const RedirectIfLoggedIn = ({ children }: RedirectIfLoggedInProps) => {
   const { currentUser } = useFrappeAuth();
   return currentUser ? <Navigate to="/" replace /> : children;
 };
 
-const PageWrapper = ({ children }: { children: React.ReactNode }) => (
+interface PageWrapperProps {
+  children: ReactNode;
+}
+
+const PageWrapper = ({ children }: PageWrapperProps) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -82,16 +88,14 @@ function AnimatedRoutes() {
           }
         >
           <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
-          <Route path="/user/profile" element={<PageWrapper><Profile /></PageWrapper>} />
-          <Route path="/settings" element={<PageWrapper><Settings /></PageWrapper>} />
-          <Route path="/invoices" element={<PageWrapper><InvoiceList /></PageWrapper>} />
-          <Route path="/invoices/upload" element={<PageWrapper><UploadInvoice /></PageWrapper>} />
-          <Route path="/items" element={<PageWrapper><ItemList /></PageWrapper>} />
-          <Route path="/items/uom" element={<PageWrapper><Uom /></PageWrapper>} />
-          <Route path="/items/hs-code" element={<PageWrapper><HSCodeList /></PageWrapper>} />
-          <Route path="/items/item-group" element={<PageWrapper><ItemGroup /></PageWrapper>} />
-          <Route path="/suppliers" element={<PageWrapper><SupplierList /></PageWrapper>} />
-          <Route path="/suppliers/supplier-group" element={<PageWrapper><SupplierGroupList /></PageWrapper>} />
+          <Route path="/user/profile" element={<PageWrapper><ProfilePage /></PageWrapper>} />
+        	<Route path="/user/notifications" element={<PageWrapper><NotificationsPage /></PageWrapper>} />
+          <Route path="/gateways" element={<PageWrapper><GatewayList /></PageWrapper>} />
+          <Route path="/gateways/:id" element={<PageWrapper><GatewayPage /></PageWrapper>} />
+          <Route path="/sensors" element={<PageWrapper><SensorList /></PageWrapper>} />
+          <Route path="/sensors/:id" element={<PageWrapper><SensorPage /></PageWrapper>} />
+          <Route path="/settings" element={<PageWrapper><SettingsPage /></PageWrapper>} />
+          <Route path="/history" element={<PageWrapper><HistoryPage /></PageWrapper>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -100,12 +104,12 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  const getSiteName = () => {
-    // @ts-ignore
+  const getSiteName = (): string => {
+    // @ts-expect-error - frappe.boot might not exist on window
     if (window.frappe?.boot?.versions?.frappe.startsWith("14")) {
       return import.meta.env.VITE_SITE_NAME;
     } else {
-      // @ts-ignore
+      // @ts-expect-error - frappe.boot might not exist on window
       return window.frappe?.boot?.sitename ?? import.meta.env.VITE_SITE_NAME;
     }
   };
@@ -114,7 +118,7 @@ function App() {
     <div className="App">
       <Theme appearance="light" accentColor="blue" grayColor="sage">
         <FrappeProvider
-          socketPort={import.meta.env.VITE_SOCKET_PORT}
+          socketPort={import.meta.env.VITE_SOCKET_PORT ? parseInt(import.meta.env.VITE_SOCKET_PORT) : undefined}
           siteName={getSiteName()}
         >
           <Router>

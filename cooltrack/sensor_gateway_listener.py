@@ -3,9 +3,23 @@ import socket
 import threading
 import requests
 
-# CONFIGURE ERPNext URL
-ERP_API_URL = "http://172.235.135.7:8000/api/method/cooltrack.api.receive_sensor_data"
-
+def get_api_url_from_server():
+    try:
+        settings_url = 'http://10.0.10.116:8000/api/method/cooltrack.api.v1.get_api_url'
+        response = requests.get(settings_url)
+        
+        if response.status_code == 200:
+            data = response.json()['message']
+            print(data)
+            return data.get('api_url')
+        else:
+            print(f'Error fetching API URL: {response.status_code} - {response.text}')
+            return None
+            
+    except Exception as e:
+        print(f'Failed to get API URL: {e}')
+        return None
+    
 def decode_sensor_data(data_bytes):
     """
     Decodes sensor data, replacing \xa1\xe6 with ℃ before UTF-8 decoding.
@@ -65,10 +79,11 @@ def forward_to_erpnext(sensor_data):
     """
     try:
         print(f"Sending to ERPNext (form-data): {sensor_data}")
-
+        endpoint = get_api_url_from_server()
+        print(f"Endpoint : {endpoint}")
         # ERPNext expects form-data with each field as a key-value pair
         response = requests.post(
-            ERP_API_URL,
+            endpoint,
             data=sensor_data,  # Send as form-data (not JSON)
         )
 

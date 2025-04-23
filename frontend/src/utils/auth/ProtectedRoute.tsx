@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFrappeAuth } from 'frappe-react-sdk';
+import { Flex, Spinner } from '@radix-ui/themes';
 
 interface ProtectedRouteProps {
   children: JSX.Element;
@@ -21,10 +22,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }, [currentUser, isLoading, navigate]);
 
   if (isLoading || isAuthenticated === null) {
-    // Optionally, render a loading spinner or placeholder
-    return <div>Loading...</div>;
-  }
-
+    return (
+        <Flex justify="center" align="center" className="h-[60vh]">
+          <Spinner size="3" />
+        </Flex>
+      );
+    }
   return children;
 };
 

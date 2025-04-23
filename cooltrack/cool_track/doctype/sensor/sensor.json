@@ -1,0 +1,224 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2025-04-21 14:30:04.748192",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_information_section",
+  "sensor_id",
+  "sensor_type",
+  "column_break_ucde",
+  "status",
+  "approval_status",
+  "serial_number",
+  "technical_specs_section",
+  "measurement_range",
+  "accuracy",
+  "resolution",
+  "column_break_uylm",
+  "sampling_rate",
+  "operating_temperature",
+  "power_consumption",
+  "connectivity_section",
+  "gateway_id",
+  "relay_id",
+  "column_break_ihwu",
+  "communication_protocol",
+  "sensor_rssi",
+  "metadata_section",
+  "firmware_version",
+  "hardware_version",
+  "column_break_pfnr",
+  "installation_date",
+  "last_calibration",
+  "section_break_rxpi",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "sensor_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sensor ID",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "sensor_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sensor Type",
+   "options": "Sensor Type",
+   "reqd": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive\nMaintenance\nDecommissioned"
+  },
+  {
+   "fieldname": "serial_number",
+   "fieldtype": "Data",
+   "label": "Serial Number"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "basic_information_section",
+   "fieldtype": "Section Break",
+   "label": "Basic Information"
+  },
+  {
+   "fieldname": "column_break_ucde",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "technical_specs_section",
+   "fieldtype": "Section Break",
+   "label": "Technical Specifications"
+  },
+  {
+   "fieldname": "measurement_range",
+   "fieldtype": "Data",
+   "label": "Measurement Range"
+  },
+  {
+   "fieldname": "accuracy",
+   "fieldtype": "Data",
+   "label": "Accuracy"
+  },
+  {
+   "fieldname": "resolution",
+   "fieldtype": "Data",
+   "label": "Resolution"
+  },
+  {
+   "fieldname": "column_break_uylm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sampling_rate",
+   "fieldtype": "Data",
+   "label": "Sampling Rate"
+  },
+  {
+   "fieldname": "operating_temperature",
+   "fieldtype": "Data",
+   "label": "Operating Temperature"
+  },
+  {
+   "fieldname": "power_consumption",
+   "fieldtype": "Data",
+   "label": "Power Consumption"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "connectivity_section",
+   "fieldtype": "Section Break",
+   "label": "Connectivity"
+  },
+  {
+   "fieldname": "gateway_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Gateway",
+   "options": "Sensor Gateway",
+   "reqd": 1
+  },
+  {
+   "fieldname": "relay_id",
+   "fieldtype": "Data",
+   "label": "Relay ID"
+  },
+  {
+   "fieldname": "column_break_ihwu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "communication_protocol",
+   "fieldtype": "Select",
+   "label": "Communication Protocol",
+   "options": "LoRaWAN\nZigbee\nWiFi\nBluetooth\nNB-IoT"
+  },
+  {
+   "fieldname": "sensor_rssi",
+   "fieldtype": "Data",
+   "label": "Sensor RSSI"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "metadata_section",
+   "fieldtype": "Section Break",
+   "label": "Metadata"
+  },
+  {
+   "fieldname": "firmware_version",
+   "fieldtype": "Data",
+   "label": "Firmware Version"
+  },
+  {
+   "fieldname": "hardware_version",
+   "fieldtype": "Data",
+   "label": "Hardware Version"
+  },
+  {
+   "fieldname": "column_break_pfnr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "installation_date",
+   "fieldtype": "Date",
+   "label": "Installation Date"
+  },
+  {
+   "fieldname": "last_calibration",
+   "fieldtype": "Date",
+   "label": "Last Calibration"
+  },
+  {
+   "fieldname": "section_break_rxpi",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "approval_status",
+   "fieldtype": "Select",
+   "label": "Approval Status",
+   "options": "Pending\nApproved\nRejected"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-21 19:57:46.692961",
+ "modified_by": "Administrator",
+ "module": "Cool Track",
+ "name": "Sensor",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

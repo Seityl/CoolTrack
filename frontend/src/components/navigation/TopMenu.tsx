@@ -1,7 +1,8 @@
-import { Button, Flex, Heading } from "@radix-ui/themes";
+import { Button, Flex, Heading, Badge } from "@radix-ui/themes";
 import { FiBell, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.svg";
+import { useFrappeAuth, useFrappeGetCall } from "frappe-react-sdk";
 
 interface TopMenuProps {
   topMenuHeight?: number;
@@ -9,6 +10,15 @@ interface TopMenuProps {
 
 const TopMenu = ({ topMenuHeight = 64 }: TopMenuProps) => {
   const navigate = useNavigate();
+  const { currentUser } = useFrappeAuth();
+
+  // Fetch unread notifications count
+  const { data } = useFrappeGetCall<{ message: { name: string; seen: boolean }[] }>(
+    "cooltrack.api.v1.get_notifications",
+    { user_email: currentUser }
+  );
+
+  const unreadCount = data?.message.filter((notification) => !notification.seen).length || 0;
 
   return (
     <Flex
@@ -30,14 +40,14 @@ const TopMenu = ({ topMenuHeight = 64 }: TopMenuProps) => {
       {/* Logo and Brand */}
       <Flex
         align="center"
-        gap="3"
+        gap="2"
         style={{ cursor: "pointer" }}
         onClick={() => navigate("/")}
       >
         <img
           src={logo}
           alt="Cool Track Logo"
-          style={{ height: 36, width: "auto" }}
+          style={{ height: 40, width: "auto" }}
         />
         <Heading size="6" color="blue">
           Cool Track
@@ -54,10 +64,30 @@ const TopMenu = ({ topMenuHeight = 64 }: TopMenuProps) => {
           style={{
             padding: "0.4rem 0.5rem",
             borderRadius: "var(--radius-3)",
+            position: "relative",
           }}
+          onClick={() => navigate("/user/notifications")}
           aria-label="Notifications"
         >
           <FiBell size={18} />
+          {/* Unread notifications indicator */}
+          {unreadCount > 0 && (
+            <Badge
+              color="red"
+              variant="solid"
+              style={{
+                position: "absolute",
+                top: "-4px",
+                right: "-4px",
+                padding: "0.2rem 0.4rem",
+                fontSize: "10px",
+                fontWeight: "bold",
+                borderRadius: "50%",
+              }}
+            >
+              {unreadCount}
+            </Badge>
+          )}
         </Button>
         <Button
           variant="soft"
