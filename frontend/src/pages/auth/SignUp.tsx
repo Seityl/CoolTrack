@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import {
@@ -9,14 +9,58 @@ import {
   Text,
   TextField,
   Button,
-  Callout,
 } from "@radix-ui/themes";
 import { FrappeContext, FrappeConfig } from "frappe-react-sdk";
 import { isEmailValid } from "../../utils/validations";
+import logo from "../../assets/logo.svg";
+import { FaCheck, FaExclamationTriangle } from "react-icons/fa";
 
 export type SignUpInputs = {
   email: string;
   full_name: string;
+};
+
+const Toast = ({
+  message,
+  type,
+  onClose,
+}: {
+  message: string;
+  type: "success" | "error";
+  onClose: () => void;
+}) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: "20px",
+        right: "20px",
+        zIndex: 1000,
+        backgroundColor: type === "success" ? "var(--green-9)" : "var(--red-9)",
+        color: "white",
+        padding: "12px 16px",
+        borderRadius: "4px",
+        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.2)",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+      }}
+    >
+      {type === "success" ? (
+        <FaCheck size={16} />
+      ) : (
+        <FaExclamationTriangle size={16} />
+      )}
+      <Text size="2">{message}</Text>
+    </div>
+  );
 };
 
 const SignUp = () => {
@@ -28,12 +72,11 @@ const SignUp = () => {
 
   const { call } = useContext(FrappeContext) as FrappeConfig;
 
-  const [signupError, setSignupError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const onSubmit = async (values: SignUpInputs) => {
-    setSignupError(null);
-    setSuccessMessage(null);
+    setToastMessage(null);
 
     try {
       const res = await call.post("frappe.core.doctype.user.user.sign_up", {
@@ -46,98 +89,109 @@ const SignUp = () => {
         ? res.message[1] || "Signup successful!"
         : "Signup successful!";
 
-      setSuccessMessage(message);
+      setToastMessage(message);
+      setToastType("success");
     } catch (err: any) {
-      setSignupError(err?.message || "Something went wrong.");
+      setToastMessage(err?.message || "Something went wrong.");
+      setToastType("error");
     }
   };
 
   return (
-    <Flex align="center" justify="center" height="100vh" px="4">
-      <Card size="4" style={{ width: "100%", maxWidth: 400 }}>
-        <Flex direction="column" gap="5">
-          <Heading size="6" align="center">
-            Join Cool Track
-          </Heading>
-          <Heading size="4" align="center" color="gray">
-            Create your account
-          </Heading>
-
-          {signupError && (
-            <Callout.Root color="red" size="2">
-              <Callout.Text>{signupError}</Callout.Text>
-            </Callout.Root>
-          )}
-
-          {successMessage && (
-            <Callout.Root color="green" size="2">
-              <Callout.Text>{successMessage}</Callout.Text>
-            </Callout.Root>
-          )}
-
-          <Box>
-            <Text as="label" size="2" weight="medium">
-              Full Name
-            </Text>
-            <TextField.Root
-              placeholder="John Brown"
-              {...register("full_name", { required: "Full name is required" })}
-              mt="2"
+    <>
+      <Flex
+        align="center"
+        justify="center"
+        height="100vh"
+        px="4"
+        style={{ overflow: "hidden" }}
+      >
+        <Card size="1" style={{ width: "100%", maxWidth: 400 }}>
+          <Flex direction="column" gap="5" align="center">
+            <img
+              src={logo}
+              alt="Cool Track Logo"
+              style={{ height: 60, marginBottom: 10 }}
             />
-            {errors?.full_name && (
-              <Text color="red" size="1" mt="1">
-                {errors.full_name.message}
-              </Text>
-            )}
-          </Box>
+            <Heading size="6" align="center">
+              Join Cool Track
+            </Heading>
+            <Heading size="4" align="center" color="gray">
+              Create your account
+            </Heading>
 
-          <Box>
-            <Text as="label" size="2" weight="medium">
-              Email
-            </Text>
-            <TextField.Root
-              type="email"
-              placeholder="you@cooltrack.com"
-              {...register("email", {
-                required: "Email is required",
-                validate: (email) =>
-                  isEmailValid(email) || "Please enter a valid email address.",
-              })}
-              mt="2"
-            />
-            {errors?.email && (
-              <Text color="red" size="1" mt="1">
-                {errors.email.message}
+            <Box width="100%">
+              <Text as="label" size="2" weight="medium">
+                Full Name
               </Text>
-            )}
-          </Box>
+              <TextField.Root
+                placeholder="John Brown"
+                {...register("full_name", { required: "Full name is required" })}
+                mt="2"
+              />
+              {errors?.full_name && (
+                <Text color="red" size="1" mt="1">
+                  {errors.full_name.message}
+                </Text>
+              )}
+            </Box>
 
-          <Flex gap="3" justify="center" mt="2">
-            <Button
-              variant="solid"
-              color="blue"
-              type="submit"
-              disabled={isSubmitting}
-              style={{ width: "100%" }}
-              onClick={handleSubmit(onSubmit)}
-            >
-              {isSubmitting ? "Signing up..." : "Sign Up"}
-            </Button>
+            <Box width="100%">
+              <Text as="label" size="2" weight="medium">
+                Email
+              </Text>
+              <TextField.Root
+                type="email"
+                placeholder="you@cooltrack.com"
+                {...register("email", {
+                  required: "Email is required",
+                  validate: (email) =>
+                    isEmailValid(email) || "Please enter a valid email address.",
+                })}
+                mt="2"
+              />
+              {errors?.email && (
+                <Text color="red" size="1" mt="1">
+                  {errors.email.message}
+                </Text>
+              )}
+            </Box>
+
+            <Flex gap="3" justify="center" mt="2" width="100%">
+              <Button
+                variant="solid"
+                color="blue"
+                type="submit"
+                disabled={isSubmitting}
+                style={{ width: "100%" }}
+                onClick={handleSubmit(onSubmit)}
+              >
+                {isSubmitting ? "Signing up..." : "Sign Up"}
+              </Button>
+            </Flex>
+
+            <Flex justify="center" gap="2" mt="2">
+              <Text size="2" color="gray">
+                Already have an account?
+              </Text>
+              <Link to="/login" style={{ textDecoration: "none" }}>
+                <Text size="2" color="blue">
+                  Log In
+                </Text>
+              </Link>
+            </Flex>
           </Flex>
+        </Card>
+      </Flex>
 
-          <Flex justify="center" gap="2" mt="2">
-            <Text size="2" color="gray">
-              Already have an account?
-            </Text>
-            <Link to="/login" style={{ textDecoration: "none" }}>
-              <Text size="2" color="blue">
-                Log In
-              </Text>
-            </Link>
-          </Flex>
-        </Flex>
-      </Card>
-    </Flex>
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
+    </>
   );
 };
 

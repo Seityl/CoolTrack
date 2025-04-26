@@ -1,8 +1,8 @@
 import React from "react";
-import { Box, Flex, Text, Card, Heading, Link, Grid } from "@radix-ui/themes";
+import { Box, Flex, Text, Card, Heading, Link, Button, Tabs } from "@radix-ui/themes";
+import { FaThermometerHalf, FaBatteryEmpty, FaPauseCircle, FaPlug, FaSync } from "react-icons/fa";
 import { useFrappeGetDocList, useFrappeGetDoc } from "frappe-react-sdk";
 import { FiRefreshCw } from "react-icons/fi";
-import { FaPlug, FaBatteryEmpty, FaPauseCircle, FaMapMarkerAlt, FaMicrochip, FaInfoCircle, FaNetworkWired } from "react-icons/fa";
 import { useNavigate, useParams } from "react-router-dom";
 
 interface Sensor {
@@ -10,22 +10,8 @@ interface Sensor {
   sensor_id: string;
   sensor_type: string;
   status: "Active" | "Inactive" | "Maintenance" | "Decommissioned";
-  serial_number?: string;
-  measurement_range?: string;
-  accuracy?: string;
-  resolution?: string;
-  sampling_rate?: string;
-  operating_temperature?: string;
-  power_consumption?: string;
+  approval_status: "Pending" | "Approved" | "Rejected" | "Decommissioned";
   gateway_id?: string;
-  relay_id?: string;
-  communication_protocol?: string;
-  sensor_rssi?: string;
-  firmware_version?: string;
-  hardware_version?: string;
-  installation_date?: string;
-  last_calibration?: string;
-  notes?: string;
 }
 
 const statusIconMap: Record<string, React.ReactNode> = {
@@ -36,124 +22,63 @@ const statusIconMap: Record<string, React.ReactNode> = {
 };
 
 const SensorList: React.FC = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const [tab, setTab] = React.useState("Pending");
 
-  const { data: sensors, isLoading, error } = useFrappeGetDocList<Sensor>("Sensor", {
-    fields: ["name", "sensor_id", "sensor_type", "status", "serial_number", "gateway_id"],
-  });
-
-  const { data: sensorDetails } = useFrappeGetDoc<Sensor>("Sensor", id);
-
-  const formatLabel = (sensor: Sensor) => `${sensor.sensor_id} - ${sensor.serial_number || "No SN"}`;
-
-  const DetailItem: React.FC<{ label: string; value?: string }> = ({ label, value }) => {
-    if (!value) return null;
-    return (
-      <Flex gap="2">
-        <Text weight="bold" size="2" style={{ minWidth: "140px" }}>{label}:</Text>
-        <Text size="2">{value}</Text>
-      </Flex>
-    );
-  };
-
-  const renderSensorList = () => (
-    <Flex wrap="wrap" gap="3">
-      {sensors?.map(sensor => (
-        <Card key={sensor.name} style={{ width: "280px" }}>
-          <Link onClick={() => navigate(`/sensors/${sensor.name}`)}>
-            <Flex direction="column" gap="3">
-              <Heading size="3">{formatLabel(sensor)}</Heading>
-              <Flex align="center" gap="2">
-                <Text size="2" color="gray">Status:</Text>
-                <Text size="2">{sensor.status}</Text>
-                {statusIconMap[sensor.status]}
-              </Flex>
-              {sensor.gateway_id && (
-                <Flex align="center" gap="2">
-                  <FaNetworkWired size={12} />
-                  <Text size="2" color="gray">{sensor.gateway_id}</Text>
-                </Flex>
-              )}
-            </Flex>
-          </Link>
-        </Card>
-      ))}
-    </Flex>
+  const { data: sensors, isLoading, error, mutate } = useFrappeGetDocList<Sensor>(
+    "Sensor",
+    {
+      fields: ["name", "sensor_id", "sensor_type", "status", "approval_status", "gateway_id"],
+    }
   );
 
-  const renderSensorDetails = () => {
-    if (!sensorDetails) return null;
+  const handleRefresh = () => {
+    mutate();
+  };
+
+  const filteredSensors = sensors?.filter((sensor) => sensor.approval_status === tab);
+
+  const renderFilteredSensorList = (): React.ReactNode => {
+    if (filteredSensors?.length === 0) {
+      return (
+        <Card>
+          <Flex direction="column" align="center" gap="3" py="4">
+            <Text color="gray">No sensors found for {tab}.</Text>
+          </Flex>
+        </Card>
+      );
+    }
 
     return (
-      <Card>
-        <Flex direction="column" gap="4">
-          <Flex align="center" gap="3">
-            <FaMicrochip size={24} />
-            <Heading size="5">{formatLabel(sensorDetails)}</Heading>
-            <Flex align="center" gap="2" ml="auto">
-              <Text>{sensorDetails.status}</Text>
-              {statusIconMap[sensorDetails.status]}
-            </Flex>
-          </Flex>
-
-          <Grid columns="2" gap="4">
-            {/* Basic Info */}
-            <Flex direction="column" gap="2">
-              <Heading size="3" mb="2"><FaInfoCircle /> Basic Information</Heading>
-              <DetailItem label="Sensor Type" value={sensorDetails.sensor_type} />
-              <DetailItem label="Serial Number" value={sensorDetails.serial_number} />
-              <DetailItem label="Gateway" value={sensorDetails.gateway_id} />
-              <DetailItem label="Relay ID" value={sensorDetails.relay_id} />
-              <DetailItem label="Status" value={sensorDetails.status} />
-            </Flex>
-
-            {/* Technical Specs */}
-            <Flex direction="column" gap="2">
-              <Heading size="3" mb="2"><FaMicrochip /> Technical Specs</Heading>
-              <DetailItem label="Measurement Range" value={sensorDetails.measurement_range} />
-              <DetailItem label="Accuracy" value={sensorDetails.accuracy} />
-              <DetailItem label="Resolution" value={sensorDetails.resolution} />
-              <DetailItem label="Sampling Rate" value={sensorDetails.sampling_rate} />
-              <DetailItem label="Operating Temperature" value={sensorDetails.operating_temperature} />
-              <DetailItem label="Power Consumption" value={sensorDetails.power_consumption} />
-            </Flex>
-
-            {/* Connectivity */}
-            <Flex direction="column" gap="2">
-              <Heading size="3" mb="2"><FaNetworkWired /> Connectivity</Heading>
-              <DetailItem label="Protocol" value={sensorDetails.communication_protocol} />
-              <DetailItem label="RSSI" value={sensorDetails.sensor_rssi} />
-            </Flex>
-
-            {/* Metadata */}
-            <Flex direction="column" gap="2">
-              <Heading size="3" mb="2"><FaMicrochip /> Metadata</Heading>
-              <DetailItem label="Firmware Version" value={sensorDetails.firmware_version} />
-              <DetailItem label="Hardware Version" value={sensorDetails.hardware_version} />
-              <DetailItem 
-                label="Installation Date" 
-                value={sensorDetails.installation_date 
-                  ? new Date(sensorDetails.installation_date).toLocaleDateString() 
-                  : undefined} 
-              />
-              <DetailItem 
-                label="Last Calibration" 
-                value={sensorDetails.last_calibration 
-                  ? new Date(sensorDetails.last_calibration).toLocaleDateString() 
-                  : undefined} 
-              />
-            </Flex>
-          </Grid>
-
-          {sensorDetails.notes && (
-            <Flex direction="column" gap="2">
-              <Heading size="3">Notes</Heading>
-              <Text>{sensorDetails.notes}</Text>
-            </Flex>
-          )}
-        </Flex>
-      </Card>
+      <Flex wrap="wrap" gap="3" mt="4">
+        {filteredSensors?.map((sensor) => (
+          <Card
+            key={sensor.name}
+            style={{ width: "260px", transition: "all 0.2s ease-in-out" }}
+            className="hover:shadow-lg hover:scale-[1.01] cursor-pointer"
+          >
+            <Link onClick={() => navigate(`/sensors/${sensor.name}`)}>
+              <Flex direction="column" gap="3">
+                <Flex align="center" gap="2">
+                  <FaThermometerHalf size={20} />
+                  <Heading size="3">ID: {sensor.sensor_id}</Heading>
+                </Flex>
+                <Flex direction="column" gap="2">
+                  <Flex align="center" gap="2">
+                    <Text size="2" color="gray">Status:</Text>
+                    <Text size="2">{sensor.status}</Text>
+                    {statusIconMap[sensor.status]}
+                  </Flex>
+                  <Flex align="center" gap="2">
+                    <Text size="2" color="gray">Gateway:</Text>
+                    <Text size="2">{sensor.gateway_id ?? "N/A"}</Text>
+                  </Flex>
+                </Flex>
+              </Flex>
+            </Link>
+          </Card>
+        ))}
+      </Flex>
     );
   };
 
@@ -161,7 +86,14 @@ const SensorList: React.FC = () => {
     <Box p="4">
       <Flex justify="between" align="center" mb="4">
         <Text size="5" weight="bold">Sensors</Text>
-        <Text size="2">Local Time: {new Date().toLocaleTimeString()}</Text>
+        {sensors && sensors.length > 0 && (
+          <Flex gap="3" align="center">
+            <Text size="2">Local Time: {new Date().toLocaleTimeString()}</Text>
+            <Button variant="soft" onClick={handleRefresh}>
+              <FaSync /> Refresh
+            </Button>
+          </Flex>
+        )}
       </Flex>
 
       {isLoading && (
@@ -170,15 +102,19 @@ const SensorList: React.FC = () => {
         </Flex>
       )}
 
-      {error && <Text color="red">Failed to load sensors: {error.message}</Text>}
+      {error && (
+        <Text color="red">Failed to load sensors: {error.message}</Text>
+      )}
 
-      {id ? (
-        <Flex direction="column" gap="4">
-          <Link onClick={() => navigate('/sensors')}>← Back to Sensors</Link>
-          {renderSensorDetails()}
-        </Flex>
-      ) : (
-        renderSensorList()
+      {!isLoading && !error && (
+        <Tabs.Root value={tab} onValueChange={setTab}>
+          <Tabs.List>
+            <Tabs.Trigger value="Pending">Pending</Tabs.Trigger>
+            <Tabs.Trigger value="Approved">Approved</Tabs.Trigger>
+            <Tabs.Trigger value="Rejected">Rejected</Tabs.Trigger>
+          </Tabs.List>
+          <Tabs.Content value={tab}>{renderFilteredSensorList()}</Tabs.Content>
+        </Tabs.Root>
       )}
     </Box>
   );

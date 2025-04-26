@@ -54,7 +54,7 @@
    "reqd": 1
   },
   {
-   "default": "Active",
+   "default": "Inactive",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -198,7 +198,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-21 19:57:46.692961",
+ "modified": "2025-04-24 06:10:23.864527",
  "modified_by": "Administrator",
  "module": "Cool Track",
  "name": "Sensor",
@@ -218,6 +218,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

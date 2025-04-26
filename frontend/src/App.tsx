@@ -18,7 +18,9 @@ const GatewayPage = lazy(() => import("./pages/gateway/GatewayPage"));
 const SensorList = lazy(() => import("./pages/sensor/SensorList"));
 const SensorPage = lazy(() => import("./pages/sensor/SensorPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const HistoryPage = lazy( () => import("./pages/HistoryPage"));
+const LogsList = lazy(() => import("./pages/LogsList"));
+const AlertList = lazy(() => import("./pages/AlertList"));
 
 interface RedirectIfLoggedInProps {
   children: JSX.Element;
@@ -96,6 +98,8 @@ function AnimatedRoutes() {
           <Route path="/sensors/:id" element={<PageWrapper><SensorPage /></PageWrapper>} />
           <Route path="/settings" element={<PageWrapper><SettingsPage /></PageWrapper>} />
           <Route path="/history" element={<PageWrapper><HistoryPage /></PageWrapper>} />
+          <Route path="/logs" element={<PageWrapper><LogsList /></PageWrapper>} />
+          <Route path="/alerts" element={<PageWrapper><AlertList /></PageWrapper>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -24,19 +24,17 @@ import {
   
   // Sample data for sensors, gateways, and alerts
   const sampleSensors = [
-    { name: "sensor1", sensor_name: "Sensor 1", status: "Active", last_reading: "2025-04-22T10:00:00Z", battery_level: 80, gateway: "Gateway 1" },
-    { name: "sensor2", sensor_name: "Sensor 2", status: "Inactive", last_reading: "2025-04-21T09:00:00Z", battery_level: 50, gateway: "Gateway 2" },
-    { name: "sensor3", sensor_name: "Sensor 3", status: "Alert", last_reading: "2025-04-22T08:30:00Z", battery_level: 30, gateway: "Gateway 1" },
+    { name: "sensor1", sensor_name: "ID: 11242036", status: "Active", last_reading: "2025-04-24T10:00:00Z", battery_level: 80, gateway: "Gateway 1" },
+    { name: "sensor2", sensor_name: "ID: 11242228", status: "Inactive", last_reading: "", battery_level: 50, gateway: "Gateway 2" },
   ];
   
   const sampleGateways = [
-    { name: "gateway1", gateway_name: "Gateway 1", status: "Online", last_seen: "2025-04-22T10:00:00Z" },
-    { name: "gateway2", gateway_name: "Gateway 2", status: "Offline", last_seen: "2025-04-21T09:00:00Z" },
+    { name: "gateway1", gateway_name: "ID: 19670799", status: "Online", last_seen: "2025-04-22T10:00:00Z" },
   ];
   
   const sampleAlerts = [
-    { name: "alert1", subject: "Sensor 1 Battery Low", creation: "2025-04-22T09:30:00Z", seen: false },
-    { name: "alert2", subject: "Sensor 2 Offline", creation: "2025-04-21T08:00:00Z", seen: true },
+    { name: "alert1", subject: "High Temperature", creation: "2025-04-24T09:30:00Z", seen: false },
+    { name: "alert2", subject: "Offline", creation: "2025-04-21T08:00:00Z", seen: true },
   ];
   
   const Dashboard = () => {

@@ -1,11 +1,12 @@
 import { Box, Flex, Text, Separator, Button } from "@radix-ui/themes";
 import { FaHistory } from "react-icons/fa";
 import {
-  FiGrid,
-  FiActivity,
-  FiWifi,
   FiSettings,
+	FiFileText,
+  FiGrid,
+  FiWifi,
 	FiBell,
+    FiThermometer,
 } from "react-icons/fi";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -19,10 +20,11 @@ const menuSections = [
     title: "Overview",
     items: [
       { label: "Dashboard", icon: <FiGrid />, path: "/" },
-      { label: "Sensors", icon: <FiActivity />, path: "/sensors" },
-      { label: "Gateways", icon: <FiWifi />, path: "/gateways" },
       { label: "Alerts", icon: <FiBell />, path: "/alerts" },
+      { label: "Gateways", icon: <FiWifi />, path: "/gateways" },
+      { label: "Sensors", icon: <FiThermometer />, path: "/sensors" },
 			{ label: "History", icon: <FaHistory />, path: "/history" },
+      { label: "Logs", icon: <FiFileText />, path: "/logs" },
     ],
   },
   {
@@ -33,7 +35,7 @@ const menuSections = [
   },
 ];
 
-const Sidebar = ({ sidebarWidth, topMenuHeight}: SidebarProps) => {
+const Sidebar = ({ sidebarWidth, topMenuHeight } : SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,37 +64,37 @@ const Sidebar = ({ sidebarWidth, topMenuHeight}: SidebarProps) => {
                 size="3" 
                 weight="bold"
                 style={{ color: 'white' }}
-								>
+							>
                 {section.title}
               </Text>
               <Flex direction="column" gap="2" my="4">
-							{section.items.map((item) => {
-								const isActive = location.pathname === item.path;
-								return (
-									<Button
-										key={item.label}
-										variant="soft"
-										color={isActive ? "blue" : "gray"}
-										style={{
-											width: '100%',
-											justifyContent: 'flex-start',
-											padding: '0.5rem 0.75rem',
-											borderRadius: '0.5rem',
-											transition: 'background-color 0.2s',
-											backgroundColor: isActive ? '#2563eb' : undefined,
-											color: 'white',
-										}}
-										onClick={() => navigate(item.path)}
-									>
-										<Flex align="center" gap="1">
-											{item.icon}
-											<Text as="span" style={{ fontSize: '1rem' }}>
-												{item.label}
-											</Text>
-										</Flex>
-									</Button>
-								);
-							})}
+								{section.items.map((item) => {
+									const isActive = location.pathname === item.path;
+									return (
+										<Button
+											key={item.label}
+											variant="soft"
+											color={isActive ? "blue" : "gray"}
+											style={{
+												width: '100%',
+												justifyContent: 'flex-start',
+												padding: '0.5rem 0.75rem',
+												borderRadius: '0.5rem',
+												transition: 'background-color 0.2s',
+												backgroundColor: isActive ? '#2563eb' : undefined,
+												color: 'white',
+											}}
+											onClick={() => navigate(item.path)}
+										>
+											<Flex align="center" gap="2">
+												{item.icon}
+												<Text as="span" style={{ fontSize: '1rem' }}>
+													{item.label}
+												</Text>
+											</Flex>
+										</Button>
+									);
+								})}
               </Flex>
               <Separator 
                 size="4" 

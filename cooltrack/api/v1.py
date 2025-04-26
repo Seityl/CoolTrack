@@ -22,97 +22,83 @@ def receive_sensor_data(**kwargs):
             frappe.log_error('No form data received', 'receive_sensor_data()')
             frappe.response['http_status_code'] = 400
             return {'error': 'No form data received'}
-
-        # Gateway approval check
-        if settings.require_gateway_approval:
-            gateway = frappe.db.get_value('Sensor Gateway', 
-                form_data.get('GW_ID'), 
-                ['name', 'approval_status', 'owner'], 
-                as_dict=True
-            )
             
-            if not gateway:
-                gateway = frappe.new_doc('Sensor Gateway')
-                gateway.update({
-                    'name': form_data.get('GW_ID'),
-                    'approval_status': 'Pending'
-                })
-                gateway.insert(ignore_permissions=True)
-                
-                # Send notification only for new pending gateways
-                if settings.require_gateway_approval and settings.send_approval_notifications:
-                    send_approval_notification(
-                        "gateway", 
-                        form_data.get('GW_ID'), 
-                        "Pending",
-                        gateway.owner or frappe.session.user
-                    )
-                
+        gateway_approval_status = 'Pending' if settings.require_gateway_approval else 'Approved'
+        sensor_approval_status = 'Pending' if settings.require_sensor_approval else 'Approved'
+
+        gateway = frappe.db.get_value('Sensor Gateway', 
+            form_data.get('GW_ID'), 
+            ['name', 'approval_status', 'owner'], 
+            as_dict=True
+        )
+
+        if not gateway:
+            gateway = frappe.new_doc('Sensor Gateway')
+            gateway.update({
+                'name': form_data.get('GW_ID'),
+                'approval_status': gateway_approval_status
+            })
+            gateway.insert(ignore_permissions=True)
+            if gateway_approval_status == 'Pending': 
                 frappe.response['http_status_code'] = 403
                 return {
-                    'error': 'Gateway not approved',
+                    'error': 'Gateway not approved'
                 }
             
-            elif gateway.approval_status != 'Approved':
-                frappe.response['http_status_code'] = 403
-                return {
-                    'error': 'Gateway not approved',
-                    'status': gateway.approval_status
-                }
+        elif gateway.approval_status != 'Approved':
+            frappe.response['http_status_code'] = 403
+            return {
+                'error': 'Gateway not approved',
+                'status': gateway.approval_status
+            }
 
-        # Sensor approval check
-        if settings.require_sensor_approval:
-            sensor = frappe.db.get_value('Sensor',
-                form_data.get('ID'),
-                ['name', 'approval_status', 'owner'],
-                as_dict=True
-            )
+        gateway = frappe.get_doc('Sensor Gateway', gateway.name)
+        gateway.run_method('before_save')
+        gateway.save(ignore_permissions=True)
+        
+        sensor = frappe.db.get_value('Sensor',
+            form_data.get('ID'),
+            ['name', 'approval_status', 'owner'],
+            as_dict=True
+        )
             
-            if not sensor:
-                sensor = frappe.new_doc('Sensor')
-                sensor.update({
-                    'gateway_id': form_data.get('GW_ID'),
-                    'sensor_type': form_data.get('TYPE'),
-                    'sensor_id': form_data.get('ID'),
-                    'name': form_data.get('ID'),
-                    'approval_status': 'Pending'
+        if not sensor:
+            if not frappe.db.exists('Sensor Type', form_data.get('TYPE')):
+                sensor_type = frappe.new_doc('Sensor Type')
+                sensor_type.update({
+                    'name': form_data.get('TYPE'),
+                    'type_name': form_data.get('TYPE')
                 })
-                sensor.insert(ignore_permissions=True)
-                
-                # Send notification only for new pending sensors
-                if settings.require_sensor_approval and settings.send_approval_notifications:
-                    send_approval_notification(
-                        "sensor", 
-                        form_data.get('ID'), 
-                        "Pending",
-                        sensor.owner or frappe.session.user
-                    )
-                
+                sensor_type.insert(ignore_permissions=True)
+
+            sensor = frappe.new_doc('Sensor')
+            sensor.update({
+                'gateway_id': form_data.get('GW_ID'),
+                'sensor_type': form_data.get('TYPE'),
+                'sensor_id': form_data.get('ID'),
+                'name': form_data.get('ID'),
+                'approval_status': sensor_approval_status
+            })
+            sensor.insert(ignore_permissions=True)
+
+            if sensor_approval_status == 'Pending':
                 frappe.response['http_status_code'] = 403
                 return {
                     'error': 'Sensor not approved',
                 }
             
-            elif sensor.approval_status != 'Approved':
-                frappe.response['http_status_code'] = 403
-                return {
-                    'error': 'Sensor not approved',
-                    'status': sensor.approval_status
-                }
+        elif sensor.approval_status != 'Approved':
+            frappe.response['http_status_code'] = 403
+            return {
+                'error': 'Sensor not approved',
+                'status': sensor.approval_status
+            }
 
         # Process sensor data
         temperature = parse_value(form_data.get('T'))
         humidity = parse_value(form_data.get('H'))
         voltage = parse_value(form_data.get('V'))
         rssi = parse_value(form_data.get('RSSI'))
-
-        if not frappe.db.exists('Sensor Type', form_data.get('TYPE')):
-            sensor_type = frappe.new_doc('Sensor Type')
-            sensor_type.update({
-                'name': form_data.get('TYPE'),
-                'type_name': form_data.get('TYPE')
-            })
-            sensor_type.insert(ignore_permissions=True)
 
         reading = frappe.new_doc('Sensor Read')
         reading.update({
@@ -134,11 +120,7 @@ def receive_sensor_data(**kwargs):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), 'receive_sensor_data()')
-        
-        # Send error notification to admins
-        if settings.send_approval_notifications:
-            send_system_error_notification(str(e))
-            
+        send_system_error_notification(str(e))
         frappe.response['http_status_code'] = 500
         return {
             'error': str(e)
@@ -153,15 +135,14 @@ def get_notifications(user_email: str = None):
         frappe.throw(_('User not found'))
 
     # Fetch only unread notifications
-    notifications = frappe.get_all(
+    notifications = frappe.db.get_all(
         'Notification Log',
         filters={
             'for_user': user_email,
             'read': 0
         },
         fields=['name','subject', 'email_content as message', 'creation as created_on'],
-        order_by='creation desc',
-        limit_page_length=50
+        order_by='creation desc'
     )
 
     return notifications

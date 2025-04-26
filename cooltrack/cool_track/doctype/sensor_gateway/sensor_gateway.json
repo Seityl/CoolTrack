@@ -47,6 +47,7 @@
    "options": "Sensor Gateway Type"
   },
   {
+   "default": "Inactive",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -130,6 +131,7 @@
    "label": "Firmware Version"
   },
   {
+   "default": "0",
    "fieldname": "number_of_transmissions",
    "fieldtype": "Int",
    "label": "Number of Transmissions"
@@ -167,7 +169,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-21 21:26:55.643426",
+ "modified": "2025-04-24 04:53:03.828477",
  "modified_by": "Administrator",
  "module": "Cool Track",
  "name": "Sensor Gateway",
@@ -187,6 +189,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

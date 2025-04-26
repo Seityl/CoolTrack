@@ -27,10 +27,20 @@ import {
   FaCogs,
   FaSyncAlt,
   FaMapMarkerAlt,
+  FaCheck,
+  FaTimes,
 } from "react-icons/fa";
-import { useFrappeGetDoc, useFrappeGetDocList } from "frappe-react-sdk";
+import { useFrappeGetDoc, useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
 import { useNavigate, useParams } from "react-router-dom";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import dayjs from "dayjs";
 
 interface Sensor {
@@ -38,6 +48,8 @@ interface Sensor {
   sensor_id: string;
   sensor_type: string;
   status: "Active" | "Inactive" | "Maintenance" | "Decommissioned";
+  approval_status: "Pending" | "Approved" | "Rejected" | "Decommissioned";
+
   serial_number?: string;
   measurement_range?: string;
   accuracy?: string;
@@ -78,16 +90,15 @@ const SensorPage: React.FC = () => {
   const [tab, setTab] = useState("details");
   const [startDate, setStartDate] = useState(dayjs().subtract(1, 'day').startOf('day').toISOString());
   const [endDate, setEndDate] = useState(dayjs().endOf('day').toISOString());
+  const [showRejectDialog, setShowRejectDialog] = React.useState(false);
+  const [rejectReason, setRejectReason] = React.useState("");
 
-  // Fetch sensor document
-  const { data: sensor, isLoading, error, mutate: refreshSensor } = useFrappeGetDoc<Sensor>("Sensor", id);
-
-  // Fetch sensor readings with corrected date filtering
-  const { 
-    data: readings, 
-    isLoading: isLoadingReadings, 
+  const { data: sensor, isLoading, error, mutate } = useFrappeGetDoc<Sensor>("Sensor", id);
+  const {
+    data: readings,
+    isLoading: isLoadingReadings,
     error: readingsError,
-    mutate: refreshReadings
+    mutate: refreshReadings,
   } = useFrappeGetDocList<SensorRead>("Sensor Read", {
     fields: [
       "name",
@@ -102,27 +113,26 @@ const SensorPage: React.FC = () => {
       "relay_id",
       "sensor_rssi",
       "coordinates",
-      "timestamp"
+      "timestamp",
     ],
     filters: [
       ["sensor_id", "=", id || ""],
       ["timestamp", ">=", startDate],
-      ["timestamp", "<=", endDate]
+      ["timestamp", "<=", endDate],
     ],
     orderBy: {
       field: "timestamp",
-      order: "desc"
+      order: "desc",
     },
     limit: 1000,
-    asDict: true
+    asDict: true,
   });
 
-  // Prepare chart data
   const chartData = useMemo(() => {
     if (!readings) return [];
-    
+
     return [...readings]
-      .reverse() // Reverse to show oldest first in chart
+      .reverse()
       .map((r) => ({
         ...r,
         temperature: parseFloat(r.temperature) || 0,
@@ -185,7 +195,55 @@ const SensorPage: React.FC = () => {
       <Text className="flex-1">{value || "—"}</Text>
     </Flex>
   );
+  const { call: updateApprovalStatus, loading: isUpdating } = useFrappePostCall(
+    "frappe.client.set_value"
+  );
 
+  const { call: addNote, loading: isNoting } = useFrappePostCall(
+    "frappe.client.set_value"
+  );
+
+  const handleApprove = async () => {
+    try {
+      await updateApprovalStatus({
+        doctype: "Sensor",
+        name: sensor?.name,
+        fieldname: "approval_status",
+        value: "Approved",
+      });
+      mutate();
+    } catch (err) {
+      console.error("Failed to approve gateway:", err);
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      // First update the approval status
+      await updateApprovalStatus({
+        doctype: "Sensor",
+        name: sensor?.name,
+        fieldname: "approval_status",
+        value: "Rejected",
+      });
+
+      // Add a comment with the rejection reason
+      if (rejectReason) {
+        await addNote({
+        doctype: "Sensor",
+        name: sensor?.name,
+        fieldname: "notes",
+        value: `Sensor rejected. Reason: ${rejectReason}`,
+        });
+      }
+
+      mutate();
+      setShowRejectDialog(false);
+      setRejectReason("");
+    } catch (err) {
+      console.error("Failed to reject gateway:", err);
+    }
+  };
   return (
     <Box width="100%" className="min-h-screen">
       <Box className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
@@ -230,7 +288,28 @@ const SensorPage: React.FC = () => {
                   </Text>
                 </Flex>
               </Flex>
-
+                            {/* Approval Actions for Pending gateways */}
+                            {sensor.approval_status === "Pending" && (
+                              <Flex gap="3" p="4" justify="end">
+                                <Button 
+                                  variant="solid" 
+                                  color="green" 
+                                  onClick={handleApprove}
+                                  disabled={isUpdating}
+                                >
+                                  <FaCheck /> Approve
+                                </Button>
+                                <Button 
+                                  variant="soft" 
+                                  color="red" 
+                                  onClick={() => setShowRejectDialog(true)}
+                                  disabled={isUpdating}
+                                >
+                                  <FaTimes /> Reject
+                                </Button>
+                              </Flex>
+                            )}
+                
               <Separator size="4" />
 
               <Flex direction="column" gap="4" p="4">
@@ -289,15 +368,15 @@ const SensorPage: React.FC = () => {
               </Flex>
 
               <Flex gap="4" mb="4">
-                <TextField.Root 
-                  type="datetime-local" 
-                  value={dayjs(startDate).format("YYYY-MM-DDTHH:mm")} 
-                  onChange={(e) => setStartDate(dayjs(e.target.value).toISOString())} 
+                <TextField.Root
+                  type="datetime-local"
+                  value={dayjs(startDate).format("YYYY-MM-DDTHH:mm")}
+                  onChange={(e) => setStartDate(dayjs(e.target.value).toISOString())}
                 />
-                <TextField.Root 
-                  type="datetime-local" 
-                  value={dayjs(endDate).format("YYYY-MM-DDTHH:mm")} 
-                  onChange={(e) => setEndDate(dayjs(e.target.value).toISOString())} 
+                <TextField.Root
+                  type="datetime-local"
+                  value={dayjs(endDate).format("YYYY-MM-DDTHH:mm")}
+                  onChange={(e) => setEndDate(dayjs(e.target.value).toISOString())}
                 />
               </Flex>
 
@@ -315,29 +394,29 @@ const SensorPage: React.FC = () => {
                       <YAxis yAxisId="left" domain={["auto", "auto"]} tickFormatter={(val) => `${val}°C`} />
                       <YAxis yAxisId="right" orientation="right" domain={["auto", "auto"]} tickFormatter={(val) => `${val}%`} />
                       <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value, name) => {
                           if (name === "Temperature") return [`${value}°C`, name];
                           if (name === "Humidity") return [`${value}%`, name];
                           return [value, name];
                         }}
                       />
-                      <Line 
+                      <Line
                         yAxisId="left"
                         name="Temperature"
-                        type="monotone" 
-                        dataKey="temperature" 
-                        stroke="#3182CE" 
+                        type="monotone"
+                        dataKey="temperature"
+                        stroke="#3182CE"
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 6 }}
                       />
-                      <Line 
+                      <Line
                         yAxisId="right"
                         name="Humidity"
-                        type="monotone" 
-                        dataKey="humidity" 
-                        stroke="#38A169" 
+                        type="monotone"
+                        dataKey="humidity"
+                        stroke="#38A169"
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 6 }}

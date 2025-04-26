@@ -30,7 +30,7 @@ interface SensorRead {
 
 const HistoryPage: React.FC = () => {
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'timestamp' | 'sensor_id'>('timestamp');
+  const [sortBy, setSortBy] = useState<'timestamp' | 'sensor_id'>('sensor_id');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [pageLength, setPageLength] = useState(100);
 

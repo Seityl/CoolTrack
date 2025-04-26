@@ -1,85 +1,97 @@
 import {
-  Box,
-  Flex,
-  Text,
-  Card,
-  Spinner,
-  Button,
-  Heading,
-  Badge
-} from "@radix-ui/themes";
-import { FaBell, FaCheck, FaSync } from "react-icons/fa";
-import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
-import { motion } from "framer-motion";
-
-interface Notification {
-  name: string;
-  subject: string;
-  message: string | null;
-  created_on: string;
-  seen: boolean;
-}
-
-interface NotificationResponse {
-  message: Notification[];
-}
-
-const NotificationsPage = () => {
-  const { currentUser } = useFrappeAuth();
-
-  const { data, isValidating, mutate } = useFrappeGetCall<NotificationResponse>(
-    "cooltrack.api.v1.get_notifications",
-    { user_email: currentUser }
-  );
-
-  const { call: markAsRead } = useFrappePostCall('cooltrack.api.v1.update_notification');
-
-  const notifications = data?.message ?? [];
-
-  const handleMarkAsRead = async (notificationName: string) => {
-    try {
-      await markAsRead({
-        notification: notificationName,
-      });
-      mutate(); // Refresh the notifications list
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
-
-  const handleRefresh = () => {
-    mutate(); // Refresh the notifications list
-  };
-
-  if (isValidating) {
-    return (
-      <Flex justify="center" align="center" className="h-[60vh]">
-        <Spinner size="3" />
-      </Flex>
-    );
+    Box,
+    Flex,
+    Text,
+    Card,
+    Spinner,
+    Button,
+    Heading,
+    Badge
+  } from "@radix-ui/themes";
+  import { FaBell, FaCheck, FaSync } from "react-icons/fa";
+  import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
+  import { motion } from "framer-motion";
+  
+  interface Notification {
+    name: string;
+    subject: string;
+    message: string | null;
+    created_on: string;
+    seen: boolean;
   }
-
-  return (
-    <Box className=" bg-gray-50 p-4 md:p-6">
-      {/* Sticky Header */}
-      <Box
-        className="border-b border-gray-200 p-4 w-full bg-white/90 backdrop-blur-sm"
-        style={{ position: 'sticky', top: 0, zIndex: 100 }}
-      >
-				<Flex gap="3" justify="end" align="center">
-					<Badge color="indigo" variant="soft">
-						{notifications.filter(n => !n.seen).length} unread
-					</Badge>
-					<Button variant="soft" onClick={handleRefresh}>
-						<FaSync /> Refresh
-					</Button>
-				</Flex>
-      </Box>
-
-      {/* Main Content */}
-      <Box className="px-4 py-6">
+  
+  interface NotificationResponse {
+    message: Notification[];
+  }
+  
+  const NotificationsPage = () => {
+    const { currentUser } = useFrappeAuth();
+  
+    const { data, isValidating, mutate } = useFrappeGetCall<NotificationResponse>(
+      "cooltrack.api.v1.get_notifications",
+      { user_email: currentUser }
+    );
+  
+    const { call: markAsRead } = useFrappePostCall('cooltrack.api.v1.update_notification');
+  
+    const notifications = data?.message ?? [];
+  
+    const handleMarkAsRead = async (notificationName: string) => {
+      try {
+        await markAsRead({ notification: notificationName });
+        mutate(); // Refresh the notifications list
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+      }
+    };
+  
+    const handleMarkAllAsRead = async () => {
+      const unreadNotifications = notifications.filter(n => !n.seen);
+      try {
+        await Promise.all(unreadNotifications.map(n =>
+          markAsRead({ notification: n.name })
+        ));
+        mutate();
+      } catch (error) {
+        console.error("Error marking all notifications as read:", error);
+      }
+    };
+  
+    const handleRefresh = () => {
+      mutate();
+    };
+  
+    if (isValidating) {
+      return (
+        <Flex justify="center" align="center" className="h-[60vh]">
+          <Spinner size="3" />
+        </Flex>
+      );
+    }
+  
+    return (
+      <Box className=" bg-gray-50 px-4 py-6">
+        <Box
+          className=" px-4 w-full bg-white/90 backdrop-blur-sm"
+          style={{ position: 'sticky', top: 0, zIndex: 100 }}
+        >
+          <Flex gap="3" justify="end" align="center">
+            <Badge color="indigo" variant="soft">
+              {notifications.filter(n => !n.seen).length} unread
+            </Badge>
+            <Button variant="soft" onClick={handleRefresh}>
+              <FaSync /> Refresh
+            </Button>
+            {notifications.some(n => !n.seen) && (
+              <Button variant="soft" color="green" onClick={handleMarkAllAsRead}>
+                <FaCheck /> Mark all as read
+              </Button>
+            )}
+          </Flex>
+        </Box>
+  
+        <Box className="px-4 py-6">
           <Flex direction="column" gap="6" className="w-full">
-            {/* Header Card */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -101,8 +113,7 @@ const NotificationsPage = () => {
                 </Flex>
               </Card>
             </motion.div>
-
-            {/* Notifications List */}
+  
             <Flex direction="column" gap="3" className="w-full">
               {notifications.length > 0 ? (
                 notifications.map((notification, index) => (
@@ -131,14 +142,14 @@ const NotificationsPage = () => {
                               <Text size="2" color="gray">No message content.</Text>
                             )}
                             <Text size="1" color="gray" mt="2" className="italic">
-                                {new Intl.DateTimeFormat('en-US', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true,
-                                }).format(new Date(notification.created_on.replace(' ', 'T')))}
+                              {new Intl.DateTimeFormat('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true,
+                              }).format(new Date(notification.created_on.replace(' ', 'T')))}
                             </Text>
                           </div>
                           {!notification.seen && (
@@ -178,9 +189,9 @@ const NotificationsPage = () => {
               )}
             </Flex>
           </Flex>
+        </Box>
       </Box>
-    </Box>
-  );
-};
-
-export default NotificationsPage;
+    );
+  };
+  
+  export default NotificationsPage;  

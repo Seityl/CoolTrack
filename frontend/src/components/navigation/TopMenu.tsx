@@ -8,7 +8,7 @@ interface TopMenuProps {
   topMenuHeight?: number;
 }
 
-const TopMenu = ({ topMenuHeight = 64 }: TopMenuProps) => {
+const TopMenu = ({topMenuHeight}: TopMenuProps) => {
   const navigate = useNavigate();
   const { currentUser } = useFrappeAuth();
 
@@ -37,7 +37,6 @@ const TopMenu = ({ topMenuHeight = 64 }: TopMenuProps) => {
         zIndex: 1000,
       }}
     >
-      {/* Logo and Brand */}
       <Flex
         align="center"
         gap="2"
