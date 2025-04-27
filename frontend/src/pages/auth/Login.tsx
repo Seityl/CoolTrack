@@ -8,6 +8,7 @@ import {
   Text,
   TextField,
   Button,
+  Spinner
 } from "@radix-ui/themes";
 import { FaCheck, FaExclamationTriangle } from "react-icons/fa";
 import logo from "../../assets/logo.svg";
@@ -101,7 +102,7 @@ const Login = () => {
               	Welcome to Cool Track
               </Heading>
               <Heading size="4" align="center" color="gray">
-                Sign in to continue
+                Log in to continue
               </Heading>
 
               <Box width="100%">
@@ -137,11 +138,11 @@ const Login = () => {
                   disabled={isSubmitting}
                   style={{ width: "100%" }}
                 >
-                  {isSubmitting ? "Signing in..." : "Sign In"}
+                  {isSubmitting ? <Spinner size="3" /> : "Log In"}
                 </Button>
               </Flex>
 
-              <Flex justify="center" gap="2" mt="2">
+              <Flex align="center" justify="center" gap="2" mt="2">
                 <Text size="2" color="gray">
                   Don’t have an account?
                 </Text>
@@ -152,7 +153,7 @@ const Login = () => {
                 </Link>
               </Flex>
 
-              <Flex justify="center" gap="2" mt="1">
+              <Flex align="center" justify="center" gap="2" mt="1">
                 <Text size="2" color="gray">
                   Forgot password?
                 </Text>

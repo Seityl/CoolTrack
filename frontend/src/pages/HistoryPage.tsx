@@ -12,6 +12,7 @@ import {
   Button,
 } from '@radix-ui/themes';
 import { useFrappeGetCall } from 'frappe-react-sdk';
+import { FaSyncAlt } from 'react-icons/fa';
 
 interface SensorRead {
   sensor_id: string | null;
@@ -33,6 +34,7 @@ const HistoryPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'timestamp' | 'sensor_id'>('sensor_id');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [pageLength, setPageLength] = useState(100);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const {
     data,
@@ -72,9 +74,24 @@ const HistoryPage: React.FC = () => {
     setPageLength((prev) => prev + 100);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await mutate();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     mutate();
   }, [sortBy, sortOrder, pageLength]);
+
+  const showLoadMore = useMemo(() => {
+    return data?.message && 
+           data.message.length >= pageLength && 
+           filteredReads.length > 0;
+  }, [data, pageLength, filteredReads]);
 
   if (isLoading && !data) {
     return (
@@ -94,9 +111,19 @@ const HistoryPage: React.FC = () => {
 
   return (
     <Box p="4">
-      <Heading size="6" mb="4">
-        History
-      </Heading>
+      <Flex justify="between" align="center" mb="4">
+        <Heading size="6">History</Heading>
+        <Flex gap="3">
+          <Button 
+            variant="soft" 
+            onClick={handleRefresh}
+            disabled={isRefreshing || isValidating}
+          >
+            <FaSyncAlt className={isRefreshing ? "animate-spin" : ""} />
+            Refresh
+          </Button>
+        </Flex>
+      </Flex>
 
       <Flex gap="3" mb="4" wrap="wrap">
         <Box style={{ flexGrow: 1, minWidth: '300px' }}>
@@ -134,34 +161,43 @@ const HistoryPage: React.FC = () => {
               <Table.ColumnHeaderCell>Signal Strength</Table.ColumnHeaderCell>
               <Table.ColumnHeaderCell>Seq #</Table.ColumnHeaderCell>
               <Table.ColumnHeaderCell>Gateway</Table.ColumnHeaderCell>
-              <Table.ColumnHeaderCell>Relay</Table.ColumnHeaderCell>
               <Table.ColumnHeaderCell>RSSI</Table.ColumnHeaderCell>
               <Table.ColumnHeaderCell>Coordinates</Table.ColumnHeaderCell>
               <Table.ColumnHeaderCell>Timestamp</Table.ColumnHeaderCell>
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {filteredReads.map((read, index) => (
-              <Table.Row key={index}>
-                <Table.Cell>{read.sensor_id}</Table.Cell>
-                <Table.Cell>{read.sensor_type}</Table.Cell>
-                <Table.Cell>{read.temperature}</Table.Cell>
-                <Table.Cell>{read.humidity}</Table.Cell>
-                <Table.Cell>{read.voltage}</Table.Cell>
-                <Table.Cell>{read.signal_strength}</Table.Cell>
-                <Table.Cell>{read.sequence_number}</Table.Cell>
-                <Table.Cell>{read.gateway_id}</Table.Cell>
-                <Table.Cell>{read.relay_id}</Table.Cell>
-                <Table.Cell>{read.sensor_rssi}</Table.Cell>
-                <Table.Cell>{read.coordinates}</Table.Cell>
-                <Table.Cell>{new Date(read.timestamp).toLocaleString()}</Table.Cell>
+            {filteredReads.length > 0 ? (
+              filteredReads.map((read, index) => (
+                <Table.Row key={index}>
+                  <Table.Cell>{read.sensor_id}</Table.Cell>
+                  <Table.Cell>{read.sensor_type}</Table.Cell>
+                  <Table.Cell>{read.temperature}</Table.Cell>
+                  <Table.Cell>{read.humidity}</Table.Cell>
+                  <Table.Cell>{read.voltage}</Table.Cell>
+                  <Table.Cell>{read.signal_strength}</Table.Cell>
+                  <Table.Cell>{read.sequence_number}</Table.Cell>
+                  <Table.Cell>{read.gateway_id}</Table.Cell>
+                  <Table.Cell>{read.sensor_rssi}</Table.Cell>
+                  <Table.Cell>{read.coordinates}</Table.Cell>
+                  <Table.Cell>{new Date(read.timestamp).toLocaleString()}</Table.Cell>
+                </Table.Row>
+              ))
+            ) : (
+              <Table.Row>
+                <Table.Cell colSpan={12} style={{ textAlign: 'center' }}>
+                  <Text color="gray">No matching records found</Text>
+                </Table.Cell>
               </Table.Row>
-            ))}
+            )}
           </Table.Body>
         </Table.Root>
-        {data?.message && data.message.length >= pageLength && (
+        
+        {showLoadMore && (
           <Flex justify="center" mt="4">
-            <Button onClick={handleLoadMore} disabled={isValidating}>Load More</Button>
+            <Button onClick={handleLoadMore} disabled={isValidating}>
+              {isValidating ? <Spinner /> : 'Load More'}
+            </Button>
           </Flex>
         )}
       </Card>

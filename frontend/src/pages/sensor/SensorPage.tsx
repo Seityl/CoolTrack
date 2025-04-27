@@ -10,6 +10,10 @@ import {
   Separator,
   Spinner,
   Container,
+  Dialog,
+  TextArea,
+  Grid,
+  ScrollArea,
   Tabs,
   Table,
   TextField,
@@ -25,10 +29,11 @@ import {
   FaSignal,
   FaCodeBranch,
   FaCogs,
-  FaSyncAlt,
-  FaMapMarkerAlt,
   FaCheck,
   FaTimes,
+  FaClock,
+  FaMapMarkerAlt,
+  FaSyncAlt,
 } from "react-icons/fa";
 import { useFrappeGetDoc, useFrappeGetDocList, useFrappePostCall } from "frappe-react-sdk";
 import { useNavigate, useParams } from "react-router-dom";
@@ -40,6 +45,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  Legend,
 } from "recharts";
 import dayjs from "dayjs";
 
@@ -49,7 +55,6 @@ interface Sensor {
   sensor_type: string;
   status: "Active" | "Inactive" | "Maintenance" | "Decommissioned";
   approval_status: "Pending" | "Approved" | "Rejected" | "Decommissioned";
-
   serial_number?: string;
   measurement_range?: string;
   accuracy?: string;
@@ -77,17 +82,24 @@ interface SensorRead {
   timestamp: string;
 }
 
-const statusConfig: Record<string, { icon: React.ReactNode; color: string }> = {
+const statusConfig: Record<string, { icon: React.ReactNode; color: "green" | "gray" | "orange" | "red" }> = {
   Active: { icon: <FaSignal size={14} />, color: "green" },
   Inactive: { icon: <FaBatteryEmpty size={14} />, color: "gray" },
   Maintenance: { icon: <FaTools size={14} />, color: "orange" },
   Decommissioned: { icon: <FaBatteryEmpty size={14} />, color: "red" },
 };
 
+const approvalStatusConfig: Record<string, { icon: React.ReactNode; color: "blue" | "green" | "red" | "gray" }> = {
+  Pending: { icon: <FaClock size={14} />, color: "blue" },
+  Approved: { icon: <FaCheck size={14} />, color: "green" },
+  Rejected: { icon: <FaTimes size={14} />, color: "red" },
+  Decommissioned: { icon: <FaBatteryEmpty size={14} />, color: "gray" },
+};
+
 const SensorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [tab, setTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("details");
   const [startDate, setStartDate] = useState(dayjs().subtract(1, 'day').startOf('day').toISOString());
   const [endDate, setEndDate] = useState(dayjs().endOf('day').toISOString());
   const [showRejectDialog, setShowRejectDialog] = React.useState(false);
@@ -144,7 +156,7 @@ const SensorPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" className="h-[60vh]">
+      <Flex justify="center" align="center" className="h-[80vh]">
         <Spinner size="3" />
       </Flex>
     );
@@ -152,12 +164,12 @@ const SensorPage: React.FC = () => {
 
   if (error || !sensor) {
     return (
-      <Container size="4" className="h-[60vh] flex items-center justify-center">
-        <Card>
-          <Flex direction="column" gap="4" align="center">
-            <Text color="red" weight="bold">Error loading sensor details</Text>
-            <Text>{error?.message || "Sensor not found"}</Text>
-            <Button onClick={() => navigate('/sensors')}>
+      <Container size="4" className="h-[80vh] flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <Flex direction="column" gap="4" align="center" p="4">
+            <Text color="red" weight="bold" size="4">Error loading sensor</Text>
+            <Text color="gray">{error?.message || "Sensor not found"}</Text>
+            <Button onClick={() => navigate('/sensors')} variant="soft" className="mt-4">
               <FaArrowLeft /> Return to Sensors
             </Button>
           </Flex>
@@ -184,17 +196,27 @@ const SensorPage: React.FC = () => {
     </Flex>
   );
 
-  const DetailRow = ({ label, value, icon }: {
-    label: string;
-    value?: string | number;
-    icon?: React.ReactNode;
-  }) => (
-    <Flex gap="3" align="center" py="2">
-      <Box className="w-6 text-gray-400">{icon}</Box>
-      <Text weight="medium" className="w-40 text-gray-600">{label}</Text>
-      <Text className="flex-1">{value || "—"}</Text>
+  const DetailCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
+    <Card variant="surface" className="hover:shadow-md transition-shadow">
+      <SectionHeader title={title} icon={icon} />
+      {children}
+    </Card>
+  );
+
+  const DetailItem = ({ label, value, icon }: { label: string; value?: string | number; icon?: React.ReactNode }) => (
+    <Flex direction="column" gap="1" py="2">
+      <Flex align="center" gap="2">
+        {icon && <Box className="text-gray-400">{icon}</Box>}
+        <Text size="1" className="text-gray-500 uppercase tracking-wider">
+          {label}
+        </Text>
+      </Flex>
+      <Text size="2" weight="medium" className="text-gray-900">
+        {value || "—"}
+      </Text>
     </Flex>
   );
+
   const { call: updateApprovalStatus, loading: isUpdating } = useFrappePostCall(
     "frappe.client.set_value"
   );
@@ -213,13 +235,12 @@ const SensorPage: React.FC = () => {
       });
       mutate();
     } catch (err) {
-      console.error("Failed to approve gateway:", err);
+      console.error("Failed to approve sensor:", err);
     }
   };
 
   const handleReject = async () => {
     try {
-      // First update the approval status
       await updateApprovalStatus({
         doctype: "Sensor",
         name: sensor?.name,
@@ -227,13 +248,12 @@ const SensorPage: React.FC = () => {
         value: "Rejected",
       });
 
-      // Add a comment with the rejection reason
       if (rejectReason) {
         await addNote({
-        doctype: "Sensor",
-        name: sensor?.name,
-        fieldname: "notes",
-        value: `Sensor rejected. Reason: ${rejectReason}`,
+          doctype: "Sensor",
+          name: sensor?.name,
+          fieldname: "notes",
+          value: `Sensor rejected. Reason: ${rejectReason}`,
         });
       }
 
@@ -241,230 +261,328 @@ const SensorPage: React.FC = () => {
       setShowRejectDialog(false);
       setRejectReason("");
     } catch (err) {
-      console.error("Failed to reject gateway:", err);
+      console.error("Failed to reject sensor:", err);
     }
   };
+
   return (
-    <Box width="100%" className="min-h-screen">
-      <Box className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
+    <Box p="4" className="bg-gray-50 min-h-screen">
+      {/* Header */}
+      <Box className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10 shadow-sm">
         <Container size="4">
           <Flex justify="between" align="center">
-            <Button variant="soft" onClick={() => navigate('/sensors')}>
+            <Button variant="soft" onClick={() => navigate('/sensors')} size="2">
               <FaArrowLeft /> All Sensors
             </Button>
-            <Badge
-              color={statusConfig[sensor.status].color as any}
-              highContrast
-              className="uppercase"
-            >
-              <Flex gap="2" align="center">
-                {statusConfig[sensor.status].icon}
-                {sensor.status}
-              </Flex>
-            </Badge>
+            <Flex gap="3" align="center">
+              <Badge 
+                color={statusConfig[sensor.status].color}
+                highContrast 
+                className="uppercase"
+              >
+                <Flex gap="2" align="center">
+                  {statusConfig[sensor.status].icon}
+                  {sensor.status}
+                </Flex>
+              </Badge>
+              <Badge 
+                color={approvalStatusConfig[sensor.approval_status].color}
+                highContrast 
+                className="uppercase"
+              >
+                <Flex gap="2" align="center">
+                  {approvalStatusConfig[sensor.approval_status].icon}
+                  {sensor.approval_status}
+                </Flex>
+              </Badge>
+            </Flex>
           </Flex>
         </Container>
       </Box>
 
-      <Container size="4" py="4">
-        <Tabs.Root value={tab} onValueChange={setTab}>
-          <Tabs.List>
+      {/* Main Content */}
+      <Container size="4" py="6">
+        {/* Sensor Header */}
+        <Card className="shadow-sm mb-6">
+          <Flex gap="4" align="center" p="4">
+            <Box className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <FaThermometerHalf size={24} className="text-blue-600" />
+            </Box>
+            <Flex direction="column">
+              <Heading size="5" weight="bold" className="text-gray-900">
+                {sensor.sensor_id}
+              </Heading>
+              <Text color="gray" size="2">
+                {sensor.sensor_type} • Serial: {sensor.serial_number || "Not specified"}
+              </Text>
+            </Flex>
+          </Flex>
+
+          {/* Approval Actions for Pending sensors */}
+          {sensor.approval_status === "Pending" && (
+            <Flex gap="3" p="4" justify="end" className="bg-gray-50 rounded-b-lg border-t border-gray-100">
+              <Button 
+                variant="solid" 
+                color="green" 
+                onClick={handleApprove}
+                disabled={isUpdating}
+                size="2"
+              >
+                <FaCheck /> Approve
+              </Button>
+              <Button 
+                variant="soft" 
+                color="red" 
+                onClick={() => setShowRejectDialog(true)}
+                disabled={isUpdating}
+                size="2"
+              >
+                <FaTimes /> Reject
+              </Button>
+            </Flex>
+          )}
+        </Card>
+
+        {/* Tabs */}
+        <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
+          <Tabs.List className="mb-4">
             <Tabs.Trigger value="details">Details</Tabs.Trigger>
             <Tabs.Trigger value="history">History</Tabs.Trigger>
           </Tabs.List>
 
-          <Tabs.Content value="details">
-            <Card className="shadow-sm mt-4">
-              <Flex gap="4" align="center" p="4">
-                <Box className="p-3 bg-gray-50 rounded-lg">
-                  <FaThermometerHalf size={24} className="text-blue-500" />
-                </Box>
-                <Flex direction="column">
-                  <Heading size="5" weight="bold">
-                    {sensor.sensor_id}
-                  </Heading>
-                  <Text color="gray" size="2">
-                    {sensor.sensor_type} • Serial: {sensor.serial_number || "Not specified"}
-                  </Text>
-                </Flex>
-              </Flex>
-                            {/* Approval Actions for Pending gateways */}
-                            {sensor.approval_status === "Pending" && (
-                              <Flex gap="3" p="4" justify="end">
-                                <Button 
-                                  variant="solid" 
-                                  color="green" 
-                                  onClick={handleApprove}
-                                  disabled={isUpdating}
-                                >
-                                  <FaCheck /> Approve
-                                </Button>
-                                <Button 
-                                  variant="soft" 
-                                  color="red" 
-                                  onClick={() => setShowRejectDialog(true)}
-                                  disabled={isUpdating}
-                                >
-                                  <FaTimes /> Reject
-                                </Button>
-                              </Flex>
-                            )}
-                
-              <Separator size="4" />
-
-              <Flex direction="column" gap="4" p="4">
-                <Box>
-                  <SectionHeader title="Basic Information" icon={<FaInfoCircle />} />
-                  <Card variant="surface">
-                    <DetailRow label="Sensor Type" value={sensor.sensor_type} icon={<FaMicrochip />} />
+          <ScrollArea type="auto" scrollbars="vertical" style={{ height: 'calc(100vh - 250px)' }}>
+            <Box pr="4">
+              {activeTab === "details" && (
+                <Grid columns={{ initial: '1', md: '2' }} gap="4">
+                  <DetailCard title="Basic Information" icon={<FaInfoCircle className="text-blue-500" />}>
+                    <DetailItem label="Sensor Type" value={sensor.sensor_type} icon={<FaMicrochip className="text-gray-400" />} />
                     <Separator size="1" />
-                    <DetailRow label="Serial Number" value={sensor.serial_number} />
+                    <DetailItem label="Serial Number" value={sensor.serial_number} />
                     <Separator size="1" />
-                    <DetailRow label="Installed On" value={formatDate(sensor.installation_date)} icon={<FaCalendarAlt />} />
-                  </Card>
-                </Box>
+                    <DetailItem 
+                      label="Installed On" 
+                      value={formatDate(sensor.installation_date)} 
+                      icon={<FaCalendarAlt className="text-gray-400" />} 
+                    />
+                  </DetailCard>
 
-                <Box>
-                  <SectionHeader title="Specifications" icon={<FaCogs />} />
-                  <Card variant="surface">
-                    <DetailRow label="Measurement Range" value={sensor.measurement_range} />
+                  <DetailCard title="Specifications" icon={<FaCogs className="text-purple-500" />}>
+                    <DetailItem label="Measurement Range" value={sensor.measurement_range} />
                     <Separator size="1" />
-                    <DetailRow label="Accuracy" value={sensor.accuracy} />
+                    <DetailItem label="Accuracy" value={sensor.accuracy} />
                     <Separator size="1" />
-                    <DetailRow label="Sampling Rate" value={sensor.sampling_rate} />
-                  </Card>
-                </Box>
+                    <DetailItem label="Sampling Rate" value={sensor.sampling_rate} />
+                  </DetailCard>
 
-                <Box>
-                  <SectionHeader title="Connectivity" icon={<FaCodeBranch />} />
-                  <Card variant="surface">
-                    <DetailRow label="Gateway ID" value={sensor.gateway_id} />
+                  <DetailCard title="Connectivity" icon={<FaCodeBranch className="text-green-500" />}>
+                    <DetailItem label="Gateway ID" value={sensor.gateway_id} />
                     <Separator size="1" />
-                    <DetailRow label="Protocol" value={sensor.communication_protocol} />
+                    <DetailItem label="Protocol" value={sensor.communication_protocol} />
                     <Separator size="1" />
-                    <DetailRow label="Firmware" value={sensor.firmware_version} />
-                  </Card>
-                </Box>
+                    <DetailItem label="Firmware" value={sensor.firmware_version} />
+                  </DetailCard>
 
-                {sensor.notes && (
-                  <Box>
-                    <SectionHeader title="Notes" icon={<FaInfoCircle />} />
-                    <Card variant="surface">
-                      <Text className="whitespace-pre-line p-3">{sensor.notes}</Text>
-                    </Card>
-                  </Box>
-                )}
-              </Flex>
-            </Card>
-          </Tabs.Content>
-
-          <Tabs.Content value="history">
-            <Card className="shadow-sm mt-4 p-4">
-              <Flex justify="between" align="center" mb="4">
-                <SectionHeader title="Sensor Readings" icon={<FaThermometerHalf />} />
-                <Button variant="soft" onClick={() => refreshReadings()}>
-                  <FaSyncAlt /> Refresh
-                </Button>
-              </Flex>
-
-              <Flex gap="4" mb="4">
-                <TextField.Root
-                  type="datetime-local"
-                  value={dayjs(startDate).format("YYYY-MM-DDTHH:mm")}
-                  onChange={(e) => setStartDate(dayjs(e.target.value).toISOString())}
-                />
-                <TextField.Root
-                  type="datetime-local"
-                  value={dayjs(endDate).format("YYYY-MM-DDTHH:mm")}
-                  onChange={(e) => setEndDate(dayjs(e.target.value).toISOString())}
-                />
-              </Flex>
-
-              {isLoadingReadings ? (
-                <Flex justify="center" py="6"><Spinner /></Flex>
-              ) : readingsError ? (
-                <Text color="red">Error loading readings: {readingsError.message}</Text>
-              ) : readings?.length === 0 ? (
-                <Text>No readings found for the selected time period</Text>
-              ) : (
-                <>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData}>
-                      <XAxis dataKey="timestamp" />
-                      <YAxis yAxisId="left" domain={["auto", "auto"]} tickFormatter={(val) => `${val}°C`} />
-                      <YAxis yAxisId="right" orientation="right" domain={["auto", "auto"]} tickFormatter={(val) => `${val}%`} />
-                      <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
-                      <Tooltip
-                        formatter={(value, name) => {
-                          if (name === "Temperature") return [`${value}°C`, name];
-                          if (name === "Humidity") return [`${value}%`, name];
-                          return [value, name];
-                        }}
-                      />
-                      <Line
-                        yAxisId="left"
-                        name="Temperature"
-                        type="monotone"
-                        dataKey="temperature"
-                        stroke="#3182CE"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 6 }}
-                      />
-                      <Line
-                        yAxisId="right"
-                        name="Humidity"
-                        type="monotone"
-                        dataKey="humidity"
-                        stroke="#38A169"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-
-                  <Box mt="4" overflow="auto">
-                    <Table.Root>
-                      <Table.Header>
-                        <Table.Row>
-                          <Table.ColumnHeaderCell>Time</Table.ColumnHeaderCell>
-                          <Table.ColumnHeaderCell>Temp (°C)</Table.ColumnHeaderCell>
-                          <Table.ColumnHeaderCell>Humidity (%)</Table.ColumnHeaderCell>
-                          <Table.ColumnHeaderCell>Voltage (V)</Table.ColumnHeaderCell>
-                          <Table.ColumnHeaderCell>Signal</Table.ColumnHeaderCell>
-                          <Table.ColumnHeaderCell>Gateway</Table.ColumnHeaderCell>
-                          <Table.ColumnHeaderCell>Location</Table.ColumnHeaderCell>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {readings?.map((r) => (
-                          <Table.Row key={r.name}>
-                            <Table.Cell>{formatDate(r.timestamp)}</Table.Cell>
-                            <Table.Cell>{formatNumber(r.temperature)}</Table.Cell>
-                            <Table.Cell>{formatNumber(r.humidity)}</Table.Cell>
-                            <Table.Cell>{formatNumber(r.voltage)}</Table.Cell>
-                            <Table.Cell>{formatNumber(r.signal_strength)}</Table.Cell>
-                            <Table.Cell>{r.gateway_id || "—"}</Table.Cell>
-                            <Table.Cell>
-                              {r.coordinates ? (
-                                <Flex align="center" gap="2">
-                                  <FaMapMarkerAlt className="text-red-500" />
-                                  {r.coordinates}
-                                </Flex>
-                              ) : "—"}
-                            </Table.Cell>
-                          </Table.Row>
-                        ))}
-                      </Table.Body>
-                    </Table.Root>
-                  </Box>
-                </>
+                  {sensor.notes && (
+                    <DetailCard title="Notes" icon={<FaMapMarkerAlt className="text-orange-500" />}>
+                      <Text className="whitespace-pre-line p-2 bg-gray-50 rounded text-gray-700">
+                        {sensor.notes}
+                      </Text>
+                    </DetailCard>
+                  )}
+                </Grid>
               )}
-            </Card>
-          </Tabs.Content>
+
+              {activeTab === "history" && (
+                <Tabs.Content value="history">
+                  <Card className="shadow-sm p-4">
+                    <Flex justify="between" align="center" mb="4">
+                      <SectionHeader title="Sensor Readings" icon={<FaThermometerHalf className="text-blue-500" />} />
+                      <Flex gap="3" align="center">
+                        <Button 
+                          variant="soft" 
+                          onClick={() => refreshReadings()}
+                          size="2"
+                        >
+                          <FaSyncAlt /> Refresh
+                        </Button>
+                      </Flex>
+                    </Flex>
+
+                    <Flex gap="4" mb="4" wrap="wrap">
+                      <Box className="min-w-[200px]">
+                        <Text as="div" size="1" weight="bold" mb="1" color="gray">
+                          From
+                        </Text>
+                        <TextField.Root
+                          type="datetime-local"
+                          value={dayjs(startDate).format("YYYY-MM-DDTHH:mm")}
+                          onChange={(e) => setStartDate(dayjs(e.target.value).toISOString())}
+                        />
+                      </Box>
+                      <Box className="min-w-[200px]">
+                        <Text as="div" size="1" weight="bold" mb="1" color="gray">
+                          To
+                        </Text>
+                        <TextField.Root
+                          type="datetime-local"
+                          value={dayjs(endDate).format("YYYY-MM-DDTHH:mm")}
+                          onChange={(e) => setEndDate(dayjs(e.target.value).toISOString())}
+                        />
+                      </Box>
+                    </Flex>
+
+                    {isLoadingReadings ? (
+                      <Flex justify="center" py="6"><Spinner /></Flex>
+                    ) : readingsError ? (
+                      <Text color="red">Error loading readings: {readingsError.message}</Text>
+                    ) : readings?.length === 0 ? (
+                      <Text>No readings found for the selected time period</Text>
+                    ) : (
+                      <>
+                        <Box className="bg-white p-4 rounded-lg border border-gray-200 mb-4">
+                          <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={chartData}>
+                              <XAxis 
+                                dataKey="timestamp" 
+                                tick={{ fill: '#6b7280' }}
+                                tickMargin={10}
+                              />
+                              <YAxis 
+                                yAxisId="left" 
+                                domain={["auto", "auto"]} 
+                                tickFormatter={(val) => `${val}°C`}
+                                tick={{ fill: '#6b7280' }}
+                              />
+                              <YAxis 
+                                yAxisId="right" 
+                                orientation="right" 
+                                domain={["auto", "auto"]} 
+                                tickFormatter={(val) => `${val}%`}
+                                tick={{ fill: '#6b7280' }}
+                              />
+                              <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'white',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '0.375rem',
+                                  boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)',
+                                }}
+                                formatter={(value, name) => {
+                                  if (name === "Temperature") return [`${value}°C`, name];
+                                  if (name === "Humidity") return [`${value}%`, name];
+                                  return [value, name];
+                                }}
+                              />
+                              <Legend />
+                              <Line
+                                yAxisId="left"
+                                name="Temperature"
+                                type="monotone"
+                                dataKey="temperature"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ r: 6, strokeWidth: 2 }}
+                              />
+                              <Line
+                                yAxisId="right"
+                                name="Humidity"
+                                type="monotone"
+                                dataKey="humidity"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ r: 6, strokeWidth: 2 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </Box>
+
+                        <Box className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                          <Table.Root variant="surface">
+                            <Table.Header>
+                              <Table.Row>
+                                <Table.ColumnHeaderCell>Time</Table.ColumnHeaderCell>
+                                <Table.ColumnHeaderCell>Temp (°C)</Table.ColumnHeaderCell>
+                                <Table.ColumnHeaderCell>Humidity (%)</Table.ColumnHeaderCell>
+                                <Table.ColumnHeaderCell>Voltage (V)</Table.ColumnHeaderCell>
+                                <Table.ColumnHeaderCell>Signal</Table.ColumnHeaderCell>
+                                <Table.ColumnHeaderCell>Gateway</Table.ColumnHeaderCell>
+                                <Table.ColumnHeaderCell>Location</Table.ColumnHeaderCell>
+                              </Table.Row>
+                            </Table.Header>
+                            <Table.Body>
+                              {readings?.map((r) => (
+                                <Table.Row key={r.name}>
+                                  <Table.Cell>{formatDate(r.timestamp)}</Table.Cell>
+                                  <Table.Cell>{formatNumber(r.temperature)}</Table.Cell>
+                                  <Table.Cell>{formatNumber(r.humidity)}</Table.Cell>
+                                  <Table.Cell>{formatNumber(r.voltage)}</Table.Cell>
+                                  <Table.Cell>{formatNumber(r.signal_strength)}</Table.Cell>
+                                  <Table.Cell>{r.gateway_id || "—"}</Table.Cell>
+                                  <Table.Cell>
+                                    {r.coordinates ? (
+                                      <Flex align="center" gap="2">
+                                        <FaMapMarkerAlt className="text-red-500" />
+                                        {r.coordinates}
+                                      </Flex>
+                                    ) : "—"}
+                                  </Table.Cell>
+                                </Table.Row>
+                              ))}
+                            </Table.Body>
+                          </Table.Root>
+                        </Box>
+                      </>
+                    )}
+                  </Card>
+                </Tabs.Content>
+              )}
+            </Box>
+          </ScrollArea>
         </Tabs.Root>
       </Container>
+
+      {/* Reject Dialog */}
+      <Dialog.Root open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <Dialog.Content style={{ maxWidth: 450 }}>
+          <Dialog.Title>Reject Sensor</Dialog.Title>
+          <Dialog.Description size="2" mb="4">
+            Please provide a reason for rejecting this sensor.
+          </Dialog.Description>
+
+          <Flex direction="column" gap="3">
+            <label>
+              <Text as="div" size="2" mb="1" weight="bold">
+                Reason
+              </Text>
+              <TextArea
+                placeholder="Enter rejection reason..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </label>
+          </Flex>
+
+          <Flex gap="3" mt="4" justify="end">
+            <Dialog.Close>
+              <Button variant="soft" color="gray">
+                Cancel
+              </Button>
+            </Dialog.Close>
+            <Button 
+              variant="solid" 
+              color="red" 
+              onClick={handleReject}
+              disabled={!rejectReason || isUpdating || isNoting}
+            >
+              <FaTimes /> Confirm Reject
+            </Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     </Box>
   );
 };

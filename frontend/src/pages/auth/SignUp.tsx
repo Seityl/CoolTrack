@@ -9,6 +9,7 @@ import {
   Text,
   TextField,
   Button,
+  Spinner
 } from "@radix-ui/themes";
 import { FrappeContext, FrappeConfig } from "frappe-react-sdk";
 import { isEmailValid } from "../../utils/validations";
@@ -166,11 +167,11 @@ const SignUp = () => {
                 style={{ width: "100%" }}
                 onClick={handleSubmit(onSubmit)}
               >
-                {isSubmitting ? "Signing up..." : "Sign Up"}
+                {isSubmitting ? <Spinner size="3" /> : "Sign Up"}
               </Button>
             </Flex>
 
-            <Flex justify="center" gap="2" mt="2">
+            <Flex align="center" justify="center" gap="2" mt="2">
               <Text size="2" color="gray">
                 Already have an account?
               </Text>

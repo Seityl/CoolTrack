@@ -8,9 +8,11 @@ import {
   TextField,
   Text,
   Card,
+  Spinner
 } from "@radix-ui/themes";
 import { useFrappePostCall } from "frappe-react-sdk";
 import { FaCheck, FaExclamationTriangle } from "react-icons/fa";
+import { isEmailValid } from "../../utils/validations";
 import logo from "../../assets/logo.svg";
 
 const Toast = ({
@@ -128,11 +130,11 @@ const ForgotPassword = () => {
                 disabled={isSubmitting || !email}
                 style={{ width: "100%" }}
               >
-                {isSubmitting ? "Sending..." : "Send Reset Link"}
+                {isSubmitting ? <Spinner size="3"/> : "Send Reset Link"}
               </Button>
             </Flex>
 
-            <Flex justify="center" gap="2" mt="2">
+            <Flex align="center" justify="center" gap="2" mt="2">
               <Text size="2" color="gray">
                 Remember your password?
               </Text>

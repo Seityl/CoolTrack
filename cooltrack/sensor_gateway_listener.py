@@ -5,7 +5,7 @@ import requests
 
 def get_api_url_from_server():
     try:
-        settings_url = 'http://cooltrack.qcgrant.com:8000/api/method/cooltrack.api.v1.get_api_url'
+        settings_url = 'http://10.0.10.116:8000/api/method/cooltrack.api.v1.get_api_url'
         response = requests.get(settings_url)
         
         if response.status_code == 200:

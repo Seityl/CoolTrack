@@ -2,15 +2,15 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-from cooltrack.utils import get_settings, parse_value, send_approval_notification, send_system_error_notification
+from cooltrack.utils import get_settings, parse_value, send_system_error_notification
 
 @frappe.whitelist(allow_guest=True)
 def get_api_url():
     settings = get_settings()
     if not settings or not settings.api_url:
         frappe.response['http_status_code'] = 400
-        return {'error': 'API URL not configured'}
-    return {'api_url': settings.api_url}
+        return frappe._dict({'error': 'API URL not configured'})
+    return frappe._dict({'api_url': settings.api_url})
 
 @frappe.whitelist(allow_guest=True)
 def receive_sensor_data(**kwargs):
@@ -21,16 +21,12 @@ def receive_sensor_data(**kwargs):
         if not form_data:
             frappe.log_error('No form data received', 'receive_sensor_data()')
             frappe.response['http_status_code'] = 400
-            return {'error': 'No form data received'}
+            return frappe._dict({'error': 'No form data received'})
             
         gateway_approval_status = 'Pending' if settings.require_gateway_approval else 'Approved'
         sensor_approval_status = 'Pending' if settings.require_sensor_approval else 'Approved'
 
-        gateway = frappe.db.get_value('Sensor Gateway', 
-            form_data.get('GW_ID'), 
-            ['name', 'approval_status', 'owner'], 
-            as_dict=True
-        )
+        gateway = frappe.db.get_value('Sensor Gateway', form_data.get('GW_ID'), ['name'], as_dict=True)
 
         if not gateway:
             gateway = frappe.new_doc('Sensor Gateway')
@@ -41,16 +37,11 @@ def receive_sensor_data(**kwargs):
             gateway.insert(ignore_permissions=True)
             if gateway_approval_status == 'Pending': 
                 frappe.response['http_status_code'] = 403
-                return {
-                    'error': 'Gateway not approved'
-                }
+                return frappe._dict({'error': 'Gateway not approved'})
             
         elif gateway.approval_status != 'Approved':
             frappe.response['http_status_code'] = 403
-            return {
-                'error': 'Gateway not approved',
-                'status': gateway.approval_status
-            }
+            return frappe._dict({'error': 'Gateway not approved', 'status': gateway.approval_status})
 
         gateway = frappe.get_doc('Sensor Gateway', gateway.name)
         gateway.run_method('before_save')
@@ -125,33 +116,28 @@ def receive_sensor_data(**kwargs):
         return {
             'error': str(e)
         }
-
+        
 @frappe.whitelist()
-def get_notifications(user_email: str = None):
+def get_notifications(user_email:str=None):
     if not user_email:
         user_email = frappe.session.user
-
     if not frappe.db.exists('User', user_email):
-        frappe.throw(_('User not found'))
-
-    # Fetch only unread notifications
+        frappe.throw(_(f'User {user_email} not found'))
     notifications = frappe.db.get_all(
         'Notification Log',
         filters={
             'for_user': user_email,
             'read': 0
         },
-        fields=['name','subject', 'email_content as message', 'creation as created_on'],
+        fields=['name', 'subject', 'email_content as message', 'creation as created_on'],
         order_by='creation desc'
     )
-
     return notifications
 
 @frappe.whitelist()
 def update_notification(notification: str):
     if not frappe.db.exists('Notification Log', notification):
         frappe.throw(_(f'Notification {notification} not found'))
-
     notification = frappe.get_doc('Notification Log', notification)
     notification.read = 1
     notification.save(ignore_permissions=True)
