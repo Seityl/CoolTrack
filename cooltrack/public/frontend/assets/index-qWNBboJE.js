@@ -1,1 +1,0 @@
-import{r as a,aK as r,w as e}from"./index-DjJ_UgHu.js";var n=r[" useId ".trim().toString()]||(()=>{}),i=0;function p(s){const[o,u]=a.useState(n());return e(()=>{u(t=>t!=null?t:String(i++))},[s]),s||(o?`radix-${o}`:"")}export{p as u};
