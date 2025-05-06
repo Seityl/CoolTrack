@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "prompt",
+ "autoname": "field:gateway_id",
  "creation": "2025-04-21 14:30:04.748192",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,6 +9,7 @@
   "basic_information_section",
   "gateway_type",
   "model_number",
+  "gateway_id",
   "column_break_ucde",
   "status",
   "approval_status",
@@ -165,15 +166,21 @@
    "fieldtype": "Select",
    "label": "Approval Status",
    "options": "Pending\nApproved\nRejected"
+  },
+  {
+   "fieldname": "gateway_id",
+   "fieldtype": "Data",
+   "label": "Gateway Id",
+   "unique": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-24 04:53:03.828477",
- "modified_by": "Administrator",
+ "modified": "2025-05-01 12:28:03.653012",
+ "modified_by": "jeriel@cooltrack.qcgrant.com",
  "module": "Cool Track",
  "name": "Sensor Gateway",
- "naming_rule": "Set by user",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

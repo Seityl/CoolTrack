@@ -82,6 +82,13 @@ interface SensorRead {
   timestamp: string;
 }
 
+const sensorTypeIcons: Record<string, React.ReactNode> = {
+  Temperature: <FaThermometerHalf className="text-blue-500" size={20} />,
+  Humidity: <FaThermometerHalf className="text-green-500" size={20} />,
+  Motion: <FaSignal className="text-purple-500" size={20} />,
+  Pressure: <FaThermometerHalf className="text-orange-500" size={20} />,
+};
+
 const statusConfig: Record<string, { icon: React.ReactNode; color: "green" | "gray" | "orange" | "red" }> = {
   Active: { icon: <FaSignal size={14} />, color: "green" },
   Inactive: { icon: <FaBatteryEmpty size={14} />, color: "gray" },
@@ -99,13 +106,21 @@ const approvalStatusConfig: Record<string, { icon: React.ReactNode; color: "blue
 const SensorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("details");
-  const [startDate, setStartDate] = useState(dayjs().subtract(1, 'day').startOf('day').toISOString());
-  const [endDate, setEndDate] = useState(dayjs().endOf('day').toISOString());
-  const [showRejectDialog, setShowRejectDialog] = React.useState(false);
-  const [rejectReason, setRejectReason] = React.useState("");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [activeTab, setActiveTab] = useState("history");
+  const [dateRange, setDateRange] = useState({
+    startDate: dayjs().subtract(7, 'day').startOf('day'),
+    endDate: dayjs().endOf('day')
+  });
 
   const { data: sensor, isLoading, error, mutate } = useFrappeGetDoc<Sensor>("Sensor", id);
+  
+  const apiFormattedDates = {
+    startDate: dateRange.startDate.format('YYYY-MM-DD HH:mm:ss').replace('T', ' '),
+    endDate: dateRange.endDate.format('YYYY-MM-DD HH:mm:ss').replace('T', ' ')
+  };
+
   const {
     data: readings,
     isLoading: isLoadingReadings,
@@ -120,102 +135,32 @@ const SensorPage: React.FC = () => {
       "humidity",
       "voltage",
       "signal_strength",
-      "sequence_number",
       "gateway_id",
-      "relay_id",
-      "sensor_rssi",
       "coordinates",
       "timestamp",
     ],
     filters: [
       ["sensor_id", "=", id || ""],
-      ["timestamp", ">=", startDate],
-      ["timestamp", "<=", endDate],
+      ["timestamp", ">=", apiFormattedDates.startDate],
+      ["timestamp", "<=", apiFormattedDates.endDate]
     ],
     orderBy: {
       field: "timestamp",
       order: "desc",
     },
     limit: 1000,
-    asDict: true,
   });
 
   const chartData = useMemo(() => {
     if (!readings) return [];
-
-    return [...readings]
-      .reverse()
-      .map((r) => ({
-        ...r,
-        temperature: parseFloat(r.temperature) || 0,
-        humidity: parseFloat(r.humidity || "0") || 0,
-        voltage: parseFloat(r.voltage || "0") || 0,
-        timestamp: dayjs(r.timestamp).format("HH:mm"),
-      }));
+    return readings.map(r => ({
+      ...r,
+      temperature: parseFloat(r.temperature) || 0,
+      humidity: parseFloat(r.humidity || "0") || 0,
+      voltage: parseFloat(r.voltage || "0") || 0,
+      timestamp: dayjs(r.timestamp).format("HH:mm"),
+    }));
   }, [readings]);
-
-  if (isLoading) {
-    return (
-      <Flex justify="center" align="center" className="h-[80vh]">
-        <Spinner size="3" />
-      </Flex>
-    );
-  }
-
-  if (error || !sensor) {
-    return (
-      <Container size="4" className="h-[80vh] flex items-center justify-center">
-        <Card className="max-w-md w-full">
-          <Flex direction="column" gap="4" align="center" p="4">
-            <Text color="red" weight="bold" size="4">Error loading sensor</Text>
-            <Text color="gray">{error?.message || "Sensor not found"}</Text>
-            <Button onClick={() => navigate('/sensors')} variant="soft" className="mt-4">
-              <FaArrowLeft /> Return to Sensors
-            </Button>
-          </Flex>
-        </Card>
-      </Container>
-    );
-  }
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "Not available";
-    return dayjs(dateString).format("YYYY-MM-DD HH:mm:ss");
-  };
-
-  const formatNumber = (value?: string) => {
-    if (!value) return "—";
-    const num = parseFloat(value);
-    return isNaN(num) ? value : num.toFixed(2);
-  };
-
-  const SectionHeader = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
-    <Flex gap="3" align="center" mb="2">
-      <Box className="text-gray-500">{icon}</Box>
-      <Heading size="4" weight="medium">{title}</Heading>
-    </Flex>
-  );
-
-  const DetailCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-    <Card variant="surface" className="hover:shadow-md transition-shadow">
-      <SectionHeader title={title} icon={icon} />
-      {children}
-    </Card>
-  );
-
-  const DetailItem = ({ label, value, icon }: { label: string; value?: string | number; icon?: React.ReactNode }) => (
-    <Flex direction="column" gap="1" py="2">
-      <Flex align="center" gap="2">
-        {icon && <Box className="text-gray-400">{icon}</Box>}
-        <Text size="1" className="text-gray-500 uppercase tracking-wider">
-          {label}
-        </Text>
-      </Flex>
-      <Text size="2" weight="medium" className="text-gray-900">
-        {value || "—"}
-      </Text>
-    </Flex>
-  );
 
   const { call: updateApprovalStatus, loading: isUpdating } = useFrappePostCall(
     "frappe.client.set_value"
@@ -224,7 +169,24 @@ const SensorPage: React.FC = () => {
   const { call: addNote, loading: isNoting } = useFrappePostCall(
     "frappe.client.set_value"
   );
-
+  const handlePresetDateRange = (preset: 'week' | 'month' | '3months') => {
+    let startDate = dayjs().startOf('day');
+    switch (preset) {
+      case 'week':
+        startDate = dayjs().subtract(1, 'week').startOf('day');
+        break;
+      case 'month':
+        startDate = dayjs().subtract(1, 'month').startOf('day');
+        break;
+      case '3months':
+        startDate = dayjs().subtract(3, 'month').startOf('day');
+        break;
+    }
+    setDateRange({
+      startDate,
+      endDate: dayjs().endOf('day')
+    });
+  };
   const handleApprove = async () => {
     try {
       await updateApprovalStatus({
@@ -265,8 +227,83 @@ const SensorPage: React.FC = () => {
     }
   };
 
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+    const newDate = dayjs(value);
+    if (newDate.isValid()) {
+      setDateRange(prev => ({
+        ...prev,
+        [type === 'start' ? 'startDate' : 'endDate']: type === 'start' 
+          ? newDate.startOf('day') 
+          : newDate.endOf('day')
+      }));
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Not available";
+    return dayjs(dateString).format("YYYY-MM-DD HH:mm:ss");
+  };
+
+  const formatNumber = (value?: string) => {
+    if (!value) return "—";
+    const num = parseFloat(value);
+    return isNaN(num) ? value : num.toFixed(2);
+  };
+
+  const SectionHeader = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
+    <Flex gap="3" align="center" mb="2">
+      <Box className="text-gray-500">{icon}</Box>
+      <Heading size="4" weight="medium">{title}</Heading>
+    </Flex>
+  );
+
+  const DetailCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
+    <Card variant="surface" className="hover:shadow-md transition-shadow">
+      <SectionHeader title={title} icon={icon} />
+      {children}
+    </Card>
+  );
+
+  const DetailItem = ({ label, value, icon }: { label: string; value?: string | number; icon?: React.ReactNode }) => (
+    <Flex direction="column" gap="1" py="2">
+      <Flex align="center" gap="2">
+        {icon && <Box className="text-gray-400">{icon}</Box>}
+        <Text size="1" className="text-gray-500 uppercase tracking-wider">
+          {label}
+        </Text>
+      </Flex>
+      <Text size="2" weight="medium" className="text-gray-900">
+        {value || "—"}
+      </Text>
+    </Flex>
+  );
+
+  if (isLoading) {
+    return (
+      <Flex justify="center" align="center" className="h-[80vh]">
+        <Spinner size="3" />
+      </Flex>
+    );
+  }
+
+  if (error || !sensor) {
+    return (
+      <Container size="4" className="h-[80vh] flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <Flex direction="column" gap="4" align="center" p="4">
+            <Text color="red" weight="bold" size="4">Error loading sensor</Text>
+            <Text color="gray">{error?.message || "Sensor not found"}</Text>
+            <Button onClick={() => navigate('/sensors')} variant="soft" className="mt-4">
+              <FaArrowLeft /> Return to Sensors
+            </Button>
+          </Flex>
+        </Card>
+      </Container>
+    );
+  }
+
   return (
-    <Box p="4" className="bg-gray-50 min-h-screen">
+    <Box p="4">
       {/* Header */}
       <Box className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10 shadow-sm">
         <Container size="4">
@@ -305,8 +342,8 @@ const SensorPage: React.FC = () => {
         {/* Sensor Header */}
         <Card className="shadow-sm mb-6">
           <Flex gap="4" align="center" p="4">
-            <Box className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <FaThermometerHalf size={24} className="text-blue-600" />
+            <Box className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+              {sensorTypeIcons[sensor.sensor_type] || <FaThermometerHalf className="text-blue-500" size={24} />}
             </Box>
             <Flex direction="column">
               <Heading size="5" weight="bold" className="text-gray-900">
@@ -320,7 +357,7 @@ const SensorPage: React.FC = () => {
 
           {/* Approval Actions for Pending sensors */}
           {sensor.approval_status === "Pending" && (
-            <Flex gap="3" p="4" justify="end" className="bg-gray-50 rounded-b-lg border-t border-gray-100">
+            <Flex gap="3" p="4" justify="end" className="bg-gray-50 rounded-b-lg">
               <Button 
                 variant="solid" 
                 color="green" 
@@ -346,27 +383,27 @@ const SensorPage: React.FC = () => {
         {/* Tabs */}
         <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
           <Tabs.List className="mb-4">
-            <Tabs.Trigger value="details">Details</Tabs.Trigger>
             <Tabs.Trigger value="history">History</Tabs.Trigger>
+            <Tabs.Trigger value="details">Details</Tabs.Trigger>
           </Tabs.List>
 
           <ScrollArea type="auto" scrollbars="vertical" style={{ height: 'calc(100vh - 250px)' }}>
             <Box pr="4">
               {activeTab === "details" && (
                 <Grid columns={{ initial: '1', md: '2' }} gap="4">
-                  <DetailCard title="Basic Information" icon={<FaInfoCircle className="text-blue-500" />}>
-                    <DetailItem label="Sensor Type" value={sensor.sensor_type} icon={<FaMicrochip className="text-gray-400" />} />
+                  <DetailCard title="Basic Information" icon={<FaInfoCircle />}>
+                    <DetailItem label="Sensor Type" value={sensor.sensor_type} icon={<FaMicrochip />} />
                     <Separator size="1" />
                     <DetailItem label="Serial Number" value={sensor.serial_number} />
                     <Separator size="1" />
                     <DetailItem 
                       label="Installed On" 
                       value={formatDate(sensor.installation_date)} 
-                      icon={<FaCalendarAlt className="text-gray-400" />} 
+                      icon={<FaCalendarAlt />} 
                     />
                   </DetailCard>
 
-                  <DetailCard title="Specifications" icon={<FaCogs className="text-purple-500" />}>
+                  <DetailCard title="Specifications" icon={<FaCogs />}>
                     <DetailItem label="Measurement Range" value={sensor.measurement_range} />
                     <Separator size="1" />
                     <DetailItem label="Accuracy" value={sensor.accuracy} />
@@ -374,7 +411,7 @@ const SensorPage: React.FC = () => {
                     <DetailItem label="Sampling Rate" value={sensor.sampling_rate} />
                   </DetailCard>
 
-                  <DetailCard title="Connectivity" icon={<FaCodeBranch className="text-green-500" />}>
+                  <DetailCard title="Connectivity" icon={<FaCodeBranch />}>
                     <DetailItem label="Gateway ID" value={sensor.gateway_id} />
                     <Separator size="1" />
                     <DetailItem label="Protocol" value={sensor.communication_protocol} />
@@ -383,7 +420,7 @@ const SensorPage: React.FC = () => {
                   </DetailCard>
 
                   {sensor.notes && (
-                    <DetailCard title="Notes" icon={<FaMapMarkerAlt className="text-orange-500" />}>
+                    <DetailCard title="Notes" icon={<FaMapMarkerAlt />}>
                       <Text className="whitespace-pre-line p-2 bg-gray-50 rounded text-gray-700">
                         {sensor.notes}
                       </Text>
@@ -392,44 +429,70 @@ const SensorPage: React.FC = () => {
                 </Grid>
               )}
 
-              {activeTab === "history" && (
-                <Tabs.Content value="history">
-                  <Card className="shadow-sm p-4">
-                    <Flex justify="between" align="center" mb="4">
-                      <SectionHeader title="Sensor Readings" icon={<FaThermometerHalf className="text-blue-500" />} />
-                      <Flex gap="3" align="center">
-                        <Button 
-                          variant="soft" 
-                          onClick={() => refreshReadings()}
-                          size="2"
-                        >
-                          <FaSyncAlt /> Refresh
-                        </Button>
-                      </Flex>
-                    </Flex>
+{activeTab === "history" && (
+    <Tabs.Content value="history">
+      <Card className="shadow-sm p-4">
+        <Flex justify="between" align="center" mb="4">
+          <SectionHeader title="Sensor Readings" icon={<FaThermometerHalf className="text-blue-500" />} />
+          <Flex gap="3" align="center">
+            <Button 
+              variant="soft" 
+              onClick={() => refreshReadings()}
+              size="2"
+            >
+              <FaSyncAlt /> Refresh
+            </Button>
+          </Flex>
+        </Flex>
 
-                    <Flex gap="4" mb="4" wrap="wrap">
-                      <Box className="min-w-[200px]">
-                        <Text as="div" size="1" weight="bold" mb="1" color="gray">
-                          From
-                        </Text>
-                        <TextField.Root
-                          type="datetime-local"
-                          value={dayjs(startDate).format("YYYY-MM-DDTHH:mm")}
-                          onChange={(e) => setStartDate(dayjs(e.target.value).toISOString())}
-                        />
-                      </Box>
-                      <Box className="min-w-[200px]">
-                        <Text as="div" size="1" weight="bold" mb="1" color="gray">
-                          To
-                        </Text>
-                        <TextField.Root
-                          type="datetime-local"
-                          value={dayjs(endDate).format("YYYY-MM-DDTHH:mm")}
-                          onChange={(e) => setEndDate(dayjs(e.target.value).toISOString())}
-                        />
-                      </Box>
-                    </Flex>
+        <Flex gap="4" mb="4" wrap="wrap" align="end">
+          <Box className="min-w-[200px]">
+            <Text as="div" size="1" weight="bold" mb="1" color="gray">
+              From
+            </Text>
+            <TextField.Root
+              type="datetime-local"
+              value={dateRange.startDate.format("YYYY-MM-DDTHH:mm")}
+              onChange={(e) => handleDateChange('start', e.target.value)}
+            />
+          </Box>
+          <Box className="min-w-[200px]">
+            <Text as="div" size="1" weight="bold" mb="1" color="gray">
+              To
+            </Text>
+            <TextField.Root
+              type="datetime-local"
+              value={dateRange.endDate.format("YYYY-MM-DDTHH:mm")}
+              onChange={(e) => handleDateChange('end', e.target.value)}
+            />
+          </Box>
+          <Box>
+            <Flex gap="3">
+              <Button 
+                variant="surface" 
+                onClick={() => handlePresetDateRange('week')}
+                size="2"
+              >
+                1 Week
+              </Button>
+              <Button 
+                variant="surface" 
+                onClick={() => handlePresetDateRange('month')}
+                size="2"
+              >
+                1 Month
+              </Button>
+              <Button 
+                variant="surface" 
+                onClick={() => handlePresetDateRange('3months')}
+                size="2"
+              >
+                3 Months
+              </Button>
+            </Flex>
+          </Box>
+        </Flex>
+
 
                     {isLoadingReadings ? (
                       <Flex justify="center" py="6"><Spinner /></Flex>

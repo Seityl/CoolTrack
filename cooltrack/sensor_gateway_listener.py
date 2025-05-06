@@ -5,7 +5,13 @@ import requests
 
 def get_api_url_from_server():
     try:
-        settings_url = 'http://10.0.10.116:8000/api/method/cooltrack.api.v1.get_api_url'
+        # hostname = socket.gethostname()
+        # local_ip = socket.gethostbyname(hostname)
+
+        # # base_url = f'http://{local_ip}'
+        # base_url = f'http://{local_ip}'
+
+        settings_url = f'http://cooltrack.qcgrant.com/api/method/cooltrack.api.v1.get_api_url'
         response = requests.get(settings_url)
         
         if response.status_code == 200:
@@ -15,7 +21,7 @@ def get_api_url_from_server():
         else:
             print(f'Error fetching API URL: {response.status_code} - {response.text}')
             return None
-            
+
     except Exception as e:
         print(f'Failed to get API URL: {e}')
         return None

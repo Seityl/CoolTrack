@@ -42,7 +42,7 @@ const approvalColorMap: Record<string, "green" | "gray" | "amber" | "red"> = {
 
 const GatewayList: React.FC = () => {
   const navigate = useNavigate();
-  const [tab, setTab] = React.useState("Pending");
+  const [tab, setTab] = React.useState("Approved");
 
   const { data: gateways, isLoading, error, mutate } = useFrappeGetDocList<SensorGateway>(
     "Sensor Gateway",
@@ -62,7 +62,7 @@ const GatewayList: React.FC = () => {
       return (
         <Card mt="4" style={{ background: 'var(--gray-2)' }}>
           <Flex direction="column" align="center" gap="3" py="6">
-            <Text color="gray" size="3">No {tab.toLowerCase()} gateways found</Text>
+            <Text color="gray" size="3">No {tab.toLowerCase()} locations found</Text>
             <Button variant="soft" onClick={() => mutate()}>
               Refresh
             </Button>
@@ -137,7 +137,7 @@ const GatewayList: React.FC = () => {
   return (
     <Box p="4">
       <Flex justify="between" align="center" mb="5">
-        <Heading size="6">Gateways</Heading>
+        <Heading size="6">Locations</Heading>
         <Flex gap="3" align="center">
           <Text size="2" color="gray">
             {new Date().toLocaleString('en-US', {
@@ -164,14 +164,14 @@ const GatewayList: React.FC = () => {
       {isLoading && (
         <Flex justify="center" align="center" py="8" gap="3">
           <FiRefreshCw className="animate-spin" size={18} />
-          <Text size="3">Loading gateways...</Text>
+          <Text size="3">Loading locations...</Text>
         </Flex>
       )}
 
       {error && (
         <Card variant="surface" mt="4">
           <Flex direction="column" align="center" gap="3" py="4">
-            <Text color="red" weight="bold">Failed to load gateways</Text>
+            <Text color="red" weight="bold">Failed to load locations</Text>
             <Text color="red" size="2">{error.message}</Text>
             <Button variant="soft" color="red" onClick={() => mutate()}>
               Retry
@@ -183,8 +183,8 @@ const GatewayList: React.FC = () => {
       {!isLoading && !error && (
         <Tabs.Root value={tab} onValueChange={setTab}>
           <Tabs.List style={{ background: 'transparent' }}>
-            <Tabs.Trigger value="Pending">Pending</Tabs.Trigger>
             <Tabs.Trigger value="Approved">Approved</Tabs.Trigger>
+            <Tabs.Trigger value="Pending">Pending</Tabs.Trigger>
             <Tabs.Trigger value="Rejected">Rejected</Tabs.Trigger>
           </Tabs.List>
 

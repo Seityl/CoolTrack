@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "prompt",
+ "autoname": "field:sensor_id",
  "creation": "2025-04-21 14:30:04.748192",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,6 +9,9 @@
   "basic_information_section",
   "sensor_id",
   "sensor_type",
+  "number_of_transmissions",
+  "last_heartbeat",
+  "last_temperature",
   "column_break_ucde",
   "status",
   "approval_status",
@@ -194,15 +197,30 @@
    "fieldtype": "Select",
    "label": "Approval Status",
    "options": "Pending\nApproved\nRejected"
+  },
+  {
+   "fieldname": "number_of_transmissions",
+   "fieldtype": "Int",
+   "label": "number_of_transmissions"
+  },
+  {
+   "fieldname": "last_heartbeat",
+   "fieldtype": "Datetime",
+   "label": "Last Heartbeat"
+  },
+  {
+   "fieldname": "last_temperature",
+   "fieldtype": "Float",
+   "label": "Last Temperature"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-24 06:10:23.864527",
- "modified_by": "Administrator",
+ "modified": "2025-05-02 13:06:20.218974",
+ "modified_by": "jeriel@cooltrack.qcgrant.com",
  "module": "Cool Track",
  "name": "Sensor",
- "naming_rule": "Set by user",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

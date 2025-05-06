@@ -15,7 +15,7 @@ export default defineConfig({
 		port: 8080,
 		host: '0.0.0.0',
 		proxy: proxyOptions,
-        // allowedHosts: ['cooltrack.qcgrant.com']
+        allowedHosts: ['cooltrack.qcgrant.com']
 	},
 	resolve: {
 		alias: {

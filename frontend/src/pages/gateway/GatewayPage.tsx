@@ -191,7 +191,7 @@ const GatewayPage: React.FC = () => {
             <Text color="red" weight="bold" size="4">Error loading gateway</Text>
             <Text color="gray">{error?.message || "Gateway not found"}</Text>
             <Button onClick={() => navigate('/gateways')} variant="soft" className="mt-4">
-              <FaArrowLeft /> Return to Gateways
+              <FaArrowLeft /> Return to Locations
             </Button>
           </Flex>
         </Card>
@@ -206,7 +206,7 @@ const GatewayPage: React.FC = () => {
         <Container size="4">
           <Flex justify="between" align="center">
             <Button variant="soft" onClick={() => navigate('/gateways')} size="2">
-              <FaArrowLeft /> All Gateways
+              <FaArrowLeft /> All Locations
             </Button>
             <Flex gap="3" align="center">
               <Badge 

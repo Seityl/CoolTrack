@@ -78,7 +78,7 @@ const Dashboard = () => {
 
   // Calculate summary stats
   const activeSensors = sensors?.filter(s => s.status === "Active").length || 0;
-  const onlineGateways = gateways?.filter(g => g.status === "Online").length || 0;
+  const onlineGateways = gateways?.filter(g => g.status === "Active").length || 0;
   const unreadAlerts = unreadCount?.message || 0;
 
   const isLoading = isLoadingSensors || isLoadingGateways || isLoadingAlerts;
@@ -100,7 +100,7 @@ const Dashboard = () => {
       </Flex>
 
       {/* Status Overview Cards */}
-      <Grid columns={{ initial: '1', sm: '3' }} gap="4" mb="6">
+      <Grid columns={{ initial: '1', sm: '2' }} gap="4" mb="6">
         <motion.div whileHover={{ y: -2 }}>
           <Card size="3">
             <Flex gap="4" align="center">
@@ -122,14 +122,14 @@ const Dashboard = () => {
                 <FaServer className="text-blue-600 text-xl" />
               </div>
               <Flex direction="column">
-                <Text size="2" color="gray">Online Gateways</Text>
+                <Text size="2" color="gray">Online Locations</Text>
                 <Heading size="6">{onlineGateways}/{gateways?.length || 0}</Heading>
               </Flex>
             </Flex>
           </Card>
         </motion.div>
 
-        <motion.div whileHover={{ y: -2 }}>
+        {/* <motion.div whileHover={{ y: -2 }}>
           <Card size="3">
             <Flex gap="4" align="center">
               <div className="p-3 rounded-full bg-red-100">
@@ -141,7 +141,7 @@ const Dashboard = () => {
               </Flex>
             </Flex>
           </Card>
-        </motion.div>
+        </motion.div> */}
       </Grid>
 
       {/* Main Content Grid */}
@@ -149,7 +149,7 @@ const Dashboard = () => {
         {/* Recent Sensors */}
         <Card>
           <Flex justify="between" align="center" mb="4">
-            <Heading size="5">Recent Sensors</Heading>
+            <Heading size="5">Recent</Heading>
             <Button variant="ghost" asChild>
               <Link to="/sensors">
                 View All <FaArrowRight className="ml-2" />
@@ -166,7 +166,7 @@ const Dashboard = () => {
                       <Flex direction="column">
                         <Text weight="bold">ID: {sensor.sensor_id}</Text>
                         <Text size="2" color="gray">
-                          Gateway: {sensor.gateway_id}
+                          Location: {sensor.gateway_id}
                         </Text>
                       </Flex>
                       <Badge 
@@ -230,7 +230,7 @@ const Dashboard = () => {
         {/* Gateway Status */}
         <Card>
           <Flex justify="between" align="center" mb="4">
-            <Heading size="5">Gateway Status</Heading>
+            <Heading size="5">Location Status</Heading>
             <Button variant="ghost" asChild>
               <Link to="/gateways">
                 View All <FaArrowRight className="ml-2" />
@@ -246,6 +246,9 @@ const Dashboard = () => {
                     <Flex justify="between" align="center">
                       <Flex direction="column">
                         <Text weight="bold">{gateway.gateway_type}</Text>
+                        <Text size="2" color="gray">
+                          Location: {gateway.name}
+                        </Text>
                         <Text size="2" color="gray">
                           Last seen: {gateway.last_heartbeat ? dayjs(gateway.last_heartbeat).format("YYYY-MM-DD HH:mm") : 'Never'}
                         </Text>

@@ -1,199 +1,194 @@
 {
-    "actions": [],
-    "allow_rename": 1,
-    "autoname": "prompt",
-    "creation": "2025-04-21 14:30:04.748192",
-    "doctype": "DocType",
-    "engine": "InnoDB",
-    "field_order": [
-      "basic_information_section",
-      "type_name",
-      "manufacturer",
-      "column_break_ucde",
-      "category",
-      "is_active",
-      "technical_specs_section",
-      "measurement_parameters",
-      "accuracy",
-      "range",
-      "column_break_uylm",
-      "sampling_rate",
-      "operating_conditions",
-      "power_requirements",
-      "communication_section",
-      "default_protocol",
-      "interface_type",
-      "column_break_ihwu",
-      "data_format",
-      "certifications_section",
-      "certification",
-      "compliance_standards",
-      "column_break_pfnr",
-      "calibration_interval",
-      "section_break_rxpi",
-      "description"
-    ],
-    "fields": [
-      {
-        "fieldname": "type_name",
-        "fieldtype": "Data",
-        "label": "Type Name",
-        "unique": 1,
-        "reqd": 1
-      },
-      {
-        "fieldname": "manufacturer",
-        "fieldtype": "Link",
-        "label": "Manufacturer",
-        "options": "Manufacturer"
-      },
-      {
-        "fieldname": "category",
-        "fieldtype": "Select",
-        "label": "Category",
-        "options": "Environmental\nIndustrial\nSafety\nSecurity\nUtility\nOther"
-      },
-      {
-        "fieldname": "is_active",
-        "fieldtype": "Check",
-        "label": "Is Active",
-        "default": 1
-      },
-      {
-        "fieldname": "basic_information_section",
-        "fieldtype": "Section Break",
-        "label": "Basic Information",
-        "collapsible": 1
-      },
-      {
-        "fieldname": "column_break_ucde",
-        "fieldtype": "Column Break"
-      },
-      {
-        "fieldname": "technical_specs_section",
-        "fieldtype": "Section Break",
-        "label": "Technical Specifications",
-        "collapsible": 1
-      },
-      {
-        "fieldname": "measurement_parameters",
-        "fieldtype": "Small Text",
-        "label": "Measurement Parameters"
-      },
-      {
-        "fieldname": "accuracy",
-        "fieldtype": "Data",
-        "label": "Accuracy"
-      },
-      {
-        "fieldname": "range",
-        "fieldtype": "Data",
-        "label": "Range"
-      },
-      {
-        "fieldname": "column_break_uylm",
-        "fieldtype": "Column Break"
-      },
-      {
-        "fieldname": "sampling_rate",
-        "fieldtype": "Data",
-        "label": "Sampling Rate"
-      },
-      {
-        "fieldname": "operating_conditions",
-        "fieldtype": "Data",
-        "label": "Operating Conditions"
-      },
-      {
-        "fieldname": "power_requirements",
-        "fieldtype": "Data",
-        "label": "Power Requirements"
-      },
-      {
-        "fieldname": "communication_section",
-        "fieldtype": "Section Break",
-        "label": "Communication",
-        "collapsible": 1
-      },
-      {
-        "fieldname": "default_protocol",
-        "fieldtype": "Select",
-        "label": "Default Protocol",
-        "options": "LoRaWAN\nZigbee\nWiFi\nBluetooth\nNB-IoT\nEthernet\nRS485"
-      },
-      {
-        "fieldname": "interface_type",
-        "fieldtype": "Data",
-        "label": "Interface Type"
-      },
-      {
-        "fieldname": "column_break_ihwu",
-        "fieldtype": "Column Break"
-      },
-      {
-        "fieldname": "data_format",
-        "fieldtype": "Data",
-        "label": "Data Format"
-      },
-      {
-        "fieldname": "certifications_section",
-        "fieldtype": "Section Break",
-        "label": "Certifications",
-        "collapsible": 1
-      },
-      {
-        "fieldname": "certification",
-        "fieldtype": "Data",
-        "label": "Certification"
-      },
-      {
-        "fieldname": "compliance_standards",
-        "fieldtype": "Small Text",
-        "label": "Compliance Standards"
-      },
-      {
-        "fieldname": "column_break_pfnr",
-        "fieldtype": "Column Break"
-      },
-      {
-        "fieldname": "calibration_interval",
-        "fieldtype": "Data",
-        "label": "Calibration Interval"
-      },
-      {
-        "fieldname": "section_break_rxpi",
-        "fieldtype": "Section Break",
-        "hide_border": 1
-      },
-      {
-        "fieldname": "description",
-        "fieldtype": "Text Editor",
-        "label": "Description"
-      }
-    ],
-    "index_web_pages_for_search": 1,
-    "links": [],
-    "modified": "2025-04-21 14:46:27.353428",
-    "modified_by": "Administrator",
-    "module": "Cool Track",
-    "name": "Sensor Type",
-    "naming_rule": "Set by user",
-    "owner": "Administrator",
-    "permissions": [
-      {
-        "create": 1,
-        "delete": 1,
-        "email": 1,
-        "export": 1,
-        "print": 1,
-        "read": 1,
-        "report": 1,
-        "role": "System Manager",
-        "share": 1,
-        "write": 1
-      }
-    ],
-    "sort_field": "modified",
-    "sort_order": "DESC",
-    "states": []
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "prompt",
+ "creation": "2025-04-21 14:30:04.748192",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_information_section",
+  "type_name",
+  "column_break_ucde",
+  "category",
+  "is_active",
+  "technical_specs_section",
+  "measurement_parameters",
+  "accuracy",
+  "range",
+  "column_break_uylm",
+  "sampling_rate",
+  "operating_conditions",
+  "power_requirements",
+  "communication_section",
+  "default_protocol",
+  "interface_type",
+  "column_break_ihwu",
+  "data_format",
+  "certifications_section",
+  "certification",
+  "compliance_standards",
+  "column_break_pfnr",
+  "calibration_interval",
+  "section_break_rxpi",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "type_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Type Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "Environmental\nIndustrial\nSafety\nSecurity\nUtility\nOther"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "basic_information_section",
+   "fieldtype": "Section Break",
+   "label": "Basic Information"
+  },
+  {
+   "fieldname": "column_break_ucde",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "technical_specs_section",
+   "fieldtype": "Section Break",
+   "label": "Technical Specifications"
+  },
+  {
+   "fieldname": "measurement_parameters",
+   "fieldtype": "Small Text",
+   "label": "Measurement Parameters"
+  },
+  {
+   "fieldname": "accuracy",
+   "fieldtype": "Data",
+   "label": "Accuracy"
+  },
+  {
+   "fieldname": "range",
+   "fieldtype": "Data",
+   "label": "Range"
+  },
+  {
+   "fieldname": "column_break_uylm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sampling_rate",
+   "fieldtype": "Data",
+   "label": "Sampling Rate"
+  },
+  {
+   "fieldname": "operating_conditions",
+   "fieldtype": "Data",
+   "label": "Operating Conditions"
+  },
+  {
+   "fieldname": "power_requirements",
+   "fieldtype": "Data",
+   "label": "Power Requirements"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "communication_section",
+   "fieldtype": "Section Break",
+   "label": "Communication"
+  },
+  {
+   "fieldname": "default_protocol",
+   "fieldtype": "Select",
+   "label": "Default Protocol",
+   "options": "LoRaWAN\nZigbee\nWiFi\nBluetooth\nNB-IoT\nEthernet\nRS485"
+  },
+  {
+   "fieldname": "interface_type",
+   "fieldtype": "Data",
+   "label": "Interface Type"
+  },
+  {
+   "fieldname": "column_break_ihwu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "data_format",
+   "fieldtype": "Data",
+   "label": "Data Format"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "certifications_section",
+   "fieldtype": "Section Break",
+   "label": "Certifications"
+  },
+  {
+   "fieldname": "certification",
+   "fieldtype": "Data",
+   "label": "Certification"
+  },
+  {
+   "fieldname": "compliance_standards",
+   "fieldtype": "Small Text",
+   "label": "Compliance Standards"
+  },
+  {
+   "fieldname": "column_break_pfnr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "calibration_interval",
+   "fieldtype": "Data",
+   "label": "Calibration Interval"
+  },
+  {
+   "fieldname": "section_break_rxpi",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
   }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-27 16:07:59.309739",
+ "modified_by": "Administrator",
+ "module": "Cool Track",
+ "name": "Sensor Type",
+ "naming_rule": "Set by user",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

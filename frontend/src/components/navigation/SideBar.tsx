@@ -23,7 +23,7 @@ const menuSections = [
     items: [
       { label: "Dashboard", icon: <FiGrid />, path: "/" },
       { label: "Alerts", icon: <FiBell />, path: "/alerts" },
-      { label: "Gateways", icon: <FiWifi />, path: "/gateways" },
+    //   { label: "Gateways", icon: <FiWifi />, path: "/gateways" },
       { label: "Sensors", icon: <FiThermometer />, path: "/sensors" },
       { label: "History", icon: <FaHistory />, path: "/history" },
       { label: "Logs", icon: <FiFileText />, path: "/logs" },

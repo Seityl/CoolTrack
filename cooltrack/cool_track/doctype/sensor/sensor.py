@@ -8,31 +8,40 @@ from cooltrack.utils import get_settings, send_approval_notification, create_app
 
 class Sensor(Document):
     def after_insert(self):
+        self.send_notification()
+        self.update_status()
+
+    def validate(self):
+        settings = get_settings()
+        original_approval_status = frappe.db.get_value(self.doctype, self.name, 'approval_status')
+        if self.approval_status != original_approval_status and settings.log_approval_activities:
+            automated = not settings.require_gateway_approval
+            create_approval_log(self.doctype, self.name, self.approval_status, automated=automated)
+            
+    def before_save(self):
+        self.update_status()
+
+        if self.approval_status == 'Approved' and self.status == 'Active':
+            self.last_heartbeat = frappe.utils.now_datetime()
+        
+            if not self.number_of_transmissions:
+                self.number_of_transmissions = 0
+
+            
+            self.number_of_transmissions += 1
+
+    def update_status(self):
+        if self.approval_status == 'Approved' and self.status != 'Active':
+            self.db_set('status', 'Active')
+
+        if self.approval_status == 'Rejected' and self.status != 'Inactive':
+            self.db_set('status', 'Inactive')
+
+    def send_notification(self):
         settings = get_settings()
         if self.approval_status == 'Pending' and settings.send_approval_notifications:
             send_approval_notification(
-                'sensor', 
+                self.doctype, 
                 self.name, 
-                self.owner,
                 self.approval_status
             )
-
-    def validate(self):
-        if self.approval_status == 'Approved':
-            self.update_status('Active')
-        if self.approval_status == 'Rejected':
-            self.update_status('Inactive')
-
-    # def before_save(self):
-    #     if self.approval_status == 'Approved' and self.status == 'Active':
-    #         self.last_heartbeat = frappe.utils.now_datetime()
-        
-    #         if not self.number_of_transmissions:
-    #             self.number_of_transmissions = 0
-
-    #         self.number_of_transmissions += 1
-    
-    def update_status(self, status):
-        self.db_set('status', status)
-        create_approval_log(self.doctype, self.name, status)
-

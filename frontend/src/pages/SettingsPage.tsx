@@ -8,10 +8,10 @@ import {
   Button,
   Separator,
   Spinner,
-  Container,
   TextField,
   Switch,
   Grid,
+  Tabs,
 } from "@radix-ui/themes";
 import {
   FaSave,
@@ -23,7 +23,7 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import { useFrappeGetDoc, useFrappeUpdateDoc } from "frappe-react-sdk";
-
+import GatewayList from "./gateway/GatewayList";
 interface CoolTrackSettings {
   name: string;
   api_url: string;
@@ -79,7 +79,7 @@ const SettingsPage = () => {
   const [formData, setFormData] = useState<Partial<CoolTrackSettings>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [apiUrlError, setApiUrlError] = useState<string | null>(null);
-  const [debouncedApiUrl, setDebouncedApiUrl] = useState<string>(""); // Initial empty string
+  const [debouncedApiUrl, setDebouncedApiUrl] = useState<string>("");
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error';
@@ -164,7 +164,6 @@ const SettingsPage = () => {
   const currentValue = <K extends keyof CoolTrackSettings>(field: K): CoolTrackSettings[K] =>
     (formData[field] !== undefined ? formData[field] : settings?.[field]) as CoolTrackSettings[K];
 
-  // Event listener for saving on `ctrl + s`
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key === "s") {
@@ -174,7 +173,6 @@ const SettingsPage = () => {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
@@ -207,81 +205,96 @@ const SettingsPage = () => {
         </Box>
       )}
 
-      <Box className="mx-auto py-4">
-        <Card className="shadow-sm w-full">
-          <Flex direction="column" gap="4" p="6">
-            <Heading size="6" mb="4">Settings</Heading>
+      <Tabs.Root defaultValue="general">
+        <Tabs.List>
+          <Tabs.Trigger value="general">General Settings</Tabs.Trigger>
+          <Tabs.Trigger value="gateways">Locations</Tabs.Trigger>
+        </Tabs.List>
 
-            {/* API Section */}
-            <SectionHeader title="API Configuration" icon={<FaServer />} />
-            <SettingRow 
-              label="API URL" 
-              description="The endpoint URL for sensor data reception"
-              fullWidth
-            >
-            <TextField.Root
-              value={currentValue('api_url') || ''}
-              onChange={(e) => handleChange('api_url', e.target.value)}
-              placeholder="https://example.com/api/method/receive_sensor_data"
-              className={`w-full p-2 border rounded-md ${apiUrlError ? 'border-red-500' : 'border-gray-300'}`}
-            />
-              {apiUrlError && (
-                <Text size="1" color="red" mt="1">
-                  {apiUrlError}
-                </Text>
-              )}
-            </SettingRow>
+        <Tabs.Content value="general">
+          <Box className="mx-auto py-4">
+            <Card className="shadow-sm w-full">
+              <Flex direction="column" gap="4" p="6">
+                <Heading size="6" mb="4">Settings</Heading>
 
-            <Separator size="4" />
+                {/* API Section */}
+                <SectionHeader title="API Configuration" icon={<FaServer />} />
+                <SettingRow 
+                  label="API URL" 
+                  description="The endpoint URL for sensor data reception"
+                  fullWidth
+                >
+                  <TextField.Root
+                    value={currentValue('api_url') || ''}
+                    onChange={(e) => handleChange('api_url', e.target.value)}
+                    placeholder="https://example.com/api/method/receive_sensor_data"
+                    className={`w-full p-2 border rounded-md ${apiUrlError ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {apiUrlError && (
+                    <Text size="1" color="red" mt="1">
+                      {apiUrlError}
+                    </Text>
+                  )}
+                </SettingRow>
 
-            {/* Approval Section */}
-            <SectionHeader title="Approval Settings" icon={<FaCheckCircle />} />
-            <SettingRow
-              label="Require Gateway Approval"
-              description="When enabled, all new gateways must be manually approved before they can connect to the server."
-            >
-              <Switch
-                checked={currentValue('require_gateway_approval')}
-                onCheckedChange={(checked) => handleChange('require_gateway_approval', checked)}
-              />
-            </SettingRow>
+                <Separator size="4" />
 
-            <SettingRow
-              label="Require Sensor Approval"
-              description="When enabled, all new sensors must be approved before they can send data to the server."
-            >
-              <Switch
-                checked={currentValue('require_sensor_approval')}
-                onCheckedChange={(checked) => handleChange('require_sensor_approval', checked)}
-              />
-            </SettingRow>
+                {/* Approval Section */}
+                <SectionHeader title="Approval Settings" icon={<FaCheckCircle />} />
+                <SettingRow
+                  label="Require Location Approval"
+                  description="When enabled, all new locations must be manually approved before they can connect to the server."
+                >
+                  <Switch
+                    checked={currentValue('require_gateway_approval')}
+                    onCheckedChange={(checked) => handleChange('require_gateway_approval', checked)}
+                  />
+                </SettingRow>
 
-            <SettingRow
-              label="Log Approval Activities"
-              description="When enabled, detailed audit logs of all approval/rejection activities are generated."
-            >
-              <Switch
-                checked={currentValue('log_approval_activities')}
-                onCheckedChange={(checked) => handleChange('log_approval_activities', checked)}
-              />
-            </SettingRow>
+                <SettingRow
+                  label="Require Sensor Approval"
+                  description="When enabled, all new sensors must be approved before they can send data to the server."
+                >
+                  <Switch
+                    checked={currentValue('require_sensor_approval')}
+                    onCheckedChange={(checked) => handleChange('require_sensor_approval', checked)}
+                  />
+                </SettingRow>
 
-            <Separator size="4" />
+                <SettingRow
+                  label="Log Approval Activities"
+                  description="When enabled, detailed audit logs of all approval/rejection activities are generated."
+                >
+                  <Switch
+                    checked={currentValue('log_approval_activities')}
+                    onCheckedChange={(checked) => handleChange('log_approval_activities', checked)}
+                  />
+                </SettingRow>
 
-            {/* Notification Section */}
-            <SectionHeader title="Notification Settings" icon={<FaBell />} />
-            <SettingRow
-              label="Send Approval Notifications"
-              description="When enabled, email notifications are sent to system managers when a new gateway or sensor requires approval."
-            >
-              <Switch
-                checked={currentValue('send_approval_notifications')}
-                onCheckedChange={(checked) => handleChange('send_approval_notifications', checked)}
-              />
-            </SettingRow>
-          </Flex>
-        </Card>
-      </Box>
+                <Separator size="4" />
+
+                {/* Notification Section */}
+                <SectionHeader title="Notification Settings" icon={<FaBell />} />
+                <SettingRow
+                  label="Send Approval Notifications"
+                  description="When enabled, email notifications are sent to system managers when a new gateway or sensor requires approval."
+                >
+                  <Switch
+                    checked={currentValue('send_approval_notifications')}
+                    onCheckedChange={(checked) => handleChange('send_approval_notifications', checked)}
+                  />
+                </SettingRow>
+              </Flex>
+            </Card>
+          </Box>
+        </Tabs.Content>
+
+        <Tabs.Content value="gateways">
+          <Box className="mx-auto py-4">
+            <GatewayList />
+          </Box>
+        </Tabs.Content>
+      </Tabs.Root>
     </Box>
   );
 };

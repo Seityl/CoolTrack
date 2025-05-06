@@ -2,15 +2,14 @@
 # For license information, please see license.txt
 
 import re
-
 import frappe
-from frappe.utils import get_link_to_form, now_datetime, format_datetime
 
 def parse_value(value):
     if not value:
         return None
     try:
-        return float(re.sub(r"[^\d.-]", "", value))
+        cleaned_value = re.sub(r"[^\d.-]", "", str(value))
+        return float(cleaned_value)
     except ValueError:
         return None
 
@@ -20,24 +19,24 @@ def get_settings():
 def get_system_managers():
     return frappe.db.sql_list(
         """
-            SELECT name
-            FROM `tabUser`
-            AND EXISTS (
-                SELECT 1
-                FROM `tabHas Role`
-                WHERE role = 'System Manager'
-                AND parent = `tabUser`.name
-            )
+        SELECT name
+        FROM `tabUser` u
+        WHERE EXISTS (
+            SELECT 1
+            FROM `tabHas Role`
+            WHERE role = 'System Manager'
+            AND parent = u.name
+        )
         """
     )
 
-def send_approval_notification(device_type, device_id, status):
+def send_approval_notification(doctype, device_id, status):
     try:
         if status != 'Pending':
             return
             
         notification_exists = frappe.db.exists('Notification Log', {
-            'document_type': device_type,
+            'document_type': doctype,
             'document_name': device_id,
             'type': 'Alert',
             'read': 0  # Only check unread notifications
@@ -49,15 +48,31 @@ def send_approval_notification(device_type, device_id, status):
         if not system_managers:
             return
             
-        doc_link = get_link_to_form(device_type, device_id)
-        subject = f"New {device_type.capitalize()} Requires Approval: {device_id}"
+        if doctype == "Sensor":
+            link = f'/sensors/{device_id}'
+        elif doctype == "Sensor Gateway":
+            link = f'/gateways/{device_id}'
+
+        subject = f"New {doctype.capitalize()} Requires Approval: {device_id}"
         message = f"""
-            <p>A new <strong>{device_type}</strong> has been created and requires your approval.</p>
-            <p><strong>Details:</strong></p>
-            <ul style="margin-left: 1rem;">
-                <li><strong>ID:</strong> {doc_link}</li>
-            </ul>
-            <p>Please review and approve it at your earliest convenience.</p>
+            <div>
+                <p>A new <strong>{doctype}</strong> has been added to the system and requires your approval.</p>
+                
+                <div style="margin: 1rem 0;">
+                    <p style="margin-bottom: 0.5rem;"><strong>Details:</strong></p>
+                    <ul style="margin-left: 1.5rem; padding-left: 0.5rem;">
+                        <li><strong>ID:</strong> 
+                            <a href="{link}" 
+                            target="_self" 
+                            style="color: #1a73e8; text-decoration: underline; font-weight: bold;">
+                            {device_id}
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <p>Please review and approve it at your earliest convenience.</p>
+            </div>
         """
 
         frappe.db.savepoint('sp')
@@ -69,7 +84,7 @@ def send_approval_notification(device_type, device_id, status):
                     'for_user': manager,
                     'type': 'Alert',
                     'email_content': message,
-                    'document_type': device_type,
+                    'document_type': doctype,
                     'document_name': device_id,
                 }).insert(ignore_permissions=True)
                 frappe.db.commit()
@@ -157,3 +172,8 @@ def create_approval_log(doctype, docname, status, automated=False):
         'data': html
     }).insert(ignore_permissions=True)
     frappe.db.commit()
+
+def test():
+    docs = frappe.db.get_all('Notification Log', pluck='name')
+    for name in docs:
+        frappe.delete_doc('Notification Log', name, force=True)

@@ -15,107 +15,96 @@ def get_api_url():
 @frappe.whitelist(allow_guest=True)
 def receive_sensor_data(**kwargs):
     settings = get_settings()
+
     try:
         form_data = frappe.local.form_dict
 
         if not form_data:
-            frappe.log_error('No form data received', 'receive_sensor_data()')
-            frappe.response['http_status_code'] = 400
+            frappe.local.response['http_status_code'] = 400
             return frappe._dict({'error': 'No form data received'})
-            
+
+        gateway_id = form_data.get('GW_ID')
+        sensor_id = form_data.get('ID')
+        sensor_type_name = form_data.get('TYPE')
+
         gateway_approval_status = 'Pending' if settings.require_gateway_approval else 'Approved'
         sensor_approval_status = 'Pending' if settings.require_sensor_approval else 'Approved'
 
-        gateway = frappe.db.get_value('Sensor Gateway', form_data.get('GW_ID'), ['name'], as_dict=True)
+        gateway_name = frappe.db.get_value('Sensor Gateway', {'gateway_id': gateway_id})
+        if gateway_name:
+            gateway_doc = frappe.get_doc('Sensor Gateway', gateway_name)
+            gateway_doc.save(ignore_permissions=True)
+        else:
+            gateway_doc = frappe.new_doc('Sensor Gateway')
+            gateway_doc.gateway_id = gateway_id
+            gateway_doc.approval_status = gateway_approval_status
+            gateway_doc.insert(ignore_permissions=True)
 
-        if not gateway:
-            gateway = frappe.new_doc('Sensor Gateway')
-            gateway.update({
-                'name': form_data.get('GW_ID'),
-                'approval_status': gateway_approval_status
-            })
-            gateway.insert(ignore_permissions=True)
-            if gateway_approval_status == 'Pending': 
-                frappe.response['http_status_code'] = 403
-                return frappe._dict({'error': 'Gateway not approved'})
-            
-        elif gateway.approval_status != 'Approved':
-            frappe.response['http_status_code'] = 403
-            return frappe._dict({'error': 'Gateway not approved', 'status': gateway.approval_status})
+        frappe.db.commit()
 
-        gateway = frappe.get_doc('Sensor Gateway', gateway.name)
-        gateway.run_method('before_save')
-        gateway.save(ignore_permissions=True)
+        gateway_doc.run_method('before_save')
+        frappe.db.commit()
         
-        sensor = frappe.db.get_value('Sensor',
-            form_data.get('ID'),
-            ['name', 'approval_status', 'owner'],
-            as_dict=True
-        )
-            
-        if not sensor:
-            if not frappe.db.exists('Sensor Type', form_data.get('TYPE')):
-                sensor_type = frappe.new_doc('Sensor Type')
-                sensor_type.update({
-                    'name': form_data.get('TYPE'),
-                    'type_name': form_data.get('TYPE')
-                })
-                sensor_type.insert(ignore_permissions=True)
+        if gateway_doc.approval_status != 'Approved':
+            frappe.local.response['http_status_code'] = 403
+            return frappe._dict({'error': 'Gateway not approved'})
 
-            sensor = frappe.new_doc('Sensor')
-            sensor.update({
-                'gateway_id': form_data.get('GW_ID'),
-                'sensor_type': form_data.get('TYPE'),
-                'sensor_id': form_data.get('ID'),
-                'name': form_data.get('ID'),
-                'approval_status': sensor_approval_status
-            })
-            sensor.insert(ignore_permissions=True)
+        # Ensure Sensor Type exists
+        if sensor_type_name and not frappe.db.exists('Sensor Type', sensor_type_name):
+            sensor_type = frappe.new_doc('Sensor Type')
+            sensor_type.name = sensor_type_name
+            sensor_type.type_name = sensor_type_name
+            sensor_type.insert(ignore_permissions=True)
+            frappe.db.commit()
 
-            if sensor_approval_status == 'Pending':
-                frappe.response['http_status_code'] = 403
-                return {
-                    'error': 'Sensor not approved',
-                }
-            
-        elif sensor.approval_status != 'Approved':
-            frappe.response['http_status_code'] = 403
-            return {
-                'error': 'Sensor not approved',
-                'status': sensor.approval_status
-            }
+        sensor_name = frappe.db.get_value('Sensor', {'sensor_id': sensor_id})
+        if sensor_name:
+            sensor_doc = frappe.get_doc('Sensor', sensor_name)
+            sensor_doc.last_temperature = parse_value(form_data.get('T'))
+            sensor_doc.save(ignore_permissions=True)
+        else:
+            sensor_doc = frappe.new_doc('Sensor')
+            sensor_doc.sensor_id = sensor_id
+            sensor_doc.sensor_type = sensor_type_name
+            sensor_doc.gateway_id = gateway_id
+            sensor_doc.approval_status = sensor_approval_status
+            sensor_doc.last_temperature = parse_value(form_data.get('T'))
+            sensor_doc.insert(ignore_permissions=True)
 
-        # Process sensor data
-        temperature = parse_value(form_data.get('T'))
-        humidity = parse_value(form_data.get('H'))
-        voltage = parse_value(form_data.get('V'))
-        rssi = parse_value(form_data.get('RSSI'))
+        frappe.db.commit()
 
+        sensor_doc.run_method("before_save")
+        frappe.db.commit()
+
+        if sensor_doc.approval_status != 'Approved':
+            frappe.local.response['http_status_code'] = 403
+            return frappe._dict({'error': 'Sensor not approved'})
+
+        # Process Sensor Reading
         reading = frappe.new_doc('Sensor Read')
         reading.update({
-            'sensor_id': form_data.get('ID'),
-            'sensor_type': form_data.get('TYPE'),
-            'temperature': temperature,
-            'humidity': humidity,
-            'voltage': voltage,
-            'signal_strength': rssi,
-            'sequence_number': form_data.get('SN'),
-            'gateway_id': form_data.get('GW_ID'),
+            'sensor_id': sensor_id,
+            'sensor_type': sensor_type_name,
+            'temperature': parse_value(form_data.get('T')),
+            'humidity': parse_value(form_data.get('H')),
+            'voltage': parse_value(form_data.get('V')),
+            'signal_strength': parse_value(form_data.get('RSSI')),
             'sensor_rssi': parse_value(form_data.get('T_RSSI')),
-            'coordinates': f"{form_data.get('E')},{form_data.get('N')}",
-            'timestamp': form_data.get('Time', now_datetime())
+            'sequence_number': form_data.get('SN'),
+            'gateway_id': gateway_id,
+            'coordinates': f"{form_data.get('E')},{form_data.get('N')}" if form_data.get('E') and form_data.get('N') else None,
+            'timestamp': form_data.get('Time') or now_datetime()
         })
         reading.insert(ignore_permissions=True)
+        frappe.db.commit()
 
-        return {'message': 'Data received successfully'}
+        return frappe._dict({'message': 'Data received successfully'})
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), 'receive_sensor_data()')
         send_system_error_notification(str(e))
-        frappe.response['http_status_code'] = 500
-        return {
-            'error': str(e)
-        }
+        frappe.local.response['http_status_code'] = 500
+        return {'error': str(e)}
         
 @frappe.whitelist()
 def get_notifications(user_email:str=None):

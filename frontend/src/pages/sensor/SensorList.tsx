@@ -37,7 +37,7 @@ const approvalColorMap: Record<string, "green" | "gray" | "amber" | "red"> = {
 
 const SensorList: React.FC = () => {
   const navigate = useNavigate();
-  const [tab, setTab] = React.useState("Pending");
+  const [tab, setTab] = React.useState("Approved");
 
   const { data: sensors, isLoading, error, mutate } = useFrappeGetDocList<Sensor>(
     "Sensor",
@@ -165,8 +165,8 @@ const SensorList: React.FC = () => {
       {!isLoading && !error && (
         <Tabs.Root value={tab} onValueChange={setTab}>
           <Tabs.List style={{ background: 'transparent' }}>
-            <Tabs.Trigger value="Pending">Pending</Tabs.Trigger>
             <Tabs.Trigger value="Approved">Approved</Tabs.Trigger>
+            <Tabs.Trigger value="Pending">Pending</Tabs.Trigger>
             <Tabs.Trigger value="Rejected">Rejected</Tabs.Trigger>
           </Tabs.List>
 
