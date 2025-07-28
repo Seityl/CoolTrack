@@ -13,7 +13,9 @@
   "column_break_cjnf",
   "default_approval_status",
   "notifications_section",
-  "send_approval_notifications"
+  "send_approval_notifications",
+  "section_break_jqoi",
+  "gateway_time_offset"
  ],
  "fields": [
   {
@@ -69,13 +71,22 @@
    "fieldname": "api_url",
    "fieldtype": "Data",
    "label": "API URL"
+  },
+  {
+   "fieldname": "section_break_jqoi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "gateway_time_offset",
+   "fieldtype": "Float",
+   "label": "Gateway Time Offset (Hours)"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-04-21 18:57:51.144650",
- "modified_by": "Administrator",
+ "modified": "2025-06-28 14:57:15.291137",
+ "modified_by": "jeriel@cooltrack.qcgrant.com",
  "module": "Cool Track",
  "name": "Cool Track Settings",
  "owner": "Administrator",
@@ -91,6 +102,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

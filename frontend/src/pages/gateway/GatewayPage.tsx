@@ -9,12 +9,14 @@ import {
   Badge,
   Separator,
   Spinner,
-  Container,
   Dialog,
   TextArea,
   Grid,
   ScrollArea,
   Tabs,
+  TextField,
+  Select,
+  IconButton,
 } from "@radix-ui/themes";
 import {
   FaEthernet,
@@ -34,6 +36,8 @@ import {
   FaClock,
   FaWifi,
   FaMobileAlt,
+  FaEdit,
+  FaSave,
 } from "react-icons/fa";
 import { useFrappeGetDoc, useFrappePostCall } from "frappe-react-sdk";
 import { useNavigate, useParams } from "react-router-dom";
@@ -42,17 +46,14 @@ interface SensorGateway {
   name: string;
   gateway_type: string;
   model_number?: string;
-  serial_number?: string;
   status: "Active" | "Inactive" | "Maintenance" | "Decommissioned";
   approval_status: "Pending" | "Approved" | "Rejected" | "Decommissioned";
   last_heartbeat?: string;
   ip_address?: string;
   sim_card_number?: string;
-  mac_address?: string;
   network_provider?: string;
   location?: string;
   installation_date?: string;
-  firmware_version?: string;
   number_of_transmissions?: number;
   last_maintenance?: string;
   notes?: string;
@@ -148,251 +149,428 @@ const GatewayPage: React.FC = () => {
   };
 
   const SectionHeader = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
-    <Flex gap="3" align="center" mb="2">
-      <Box className="text-gray-500">{icon}</Box>
-      <Heading size="4" weight="medium">{title}</Heading>
+    <Flex gap="3" align="center" mb="3">
+      <Box 
+        style={{ 
+          padding: '6px',
+          borderRadius: '6px',
+          background: 'var(--gray-3)',
+          color: 'var(--gray-11)'
+        }}
+      >
+        {icon}
+      </Box>
+      <Heading size="4" weight="medium" style={{ color: 'var(--gray-12)' }}>
+        {title}
+      </Heading>
     </Flex>
   );
 
   const DetailCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-    <Card variant="surface" className="hover:shadow-md transition-shadow">
-      <SectionHeader title={title} icon={icon} />
-      {children}
+    <Card 
+      variant="surface" 
+      style={{ 
+        borderRadius: '12px',
+        border: '1px solid var(--gray-4)',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+        transition: 'all 0.2s ease',
+        background: 'var(--color-surface)'
+      }}
+    >
+      <Box p="4">
+        <SectionHeader title={title} icon={icon} />
+        <Box style={{ marginTop: '12px' }}>
+          {children}
+        </Box>
+      </Box>
     </Card>
   );
 
   const DetailItem = ({ label, value, icon }: { label: string; value?: string | number; icon?: React.ReactNode }) => (
-    <Flex direction="column" gap="1" py="2">
+    <Flex direction="column" gap="2" py="3">
       <Flex align="center" gap="2">
-        {icon && <Box className="text-gray-400">{icon}</Box>}
-        <Text size="1" className="text-gray-500 uppercase tracking-wider">
+        {icon && (
+          <Box style={{ color: 'var(--gray-9)' }}>
+            {icon}
+          </Box>
+        )}
+        <Text 
+          size="1" 
+          weight="medium"
+          style={{ 
+            color: 'var(--gray-10)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}
+        >
           {label}
         </Text>
       </Flex>
-      <Text size="2" weight="medium" className="text-gray-900">
-        {value || "—"}
+      <Text 
+        size="2" 
+        weight="medium" 
+        style={{ 
+          color: value ? 'var(--gray-12)' : 'var(--gray-9)',
+          fontFamily: typeof value === 'number' ? 'var(--font-mono, monospace)' : 'inherit'
+        }}
+      >
+        {value?.toLocaleString() || "—"}
       </Text>
     </Flex>
   );
 
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" className="h-[80vh]">
-        <Spinner size="3" />
-      </Flex>
+      <Box style={{ background: 'var(--gray-1)' }}>
+        <Flex justify="center" align="center" style={{ height: '80vh' }}>
+          <Flex direction="column" gap="3" align="center">
+            <Spinner size="3" />
+          </Flex>
+        </Flex>
+      </Box>
     );
   }
 
   if (error || !gateway) {
     return (
-      <Container size="4" className="h-[80vh] flex items-center justify-center">
-        <Card className="max-w-md w-full">
-          <Flex direction="column" gap="4" align="center" p="4">
-            <Text color="red" weight="bold" size="4">Error loading gateway</Text>
-            <Text color="gray">{error?.message || "Gateway not found"}</Text>
-            <Button onClick={() => navigate('/gateways')} variant="soft" className="mt-4">
-              <FaArrowLeft /> Return to Locations
-            </Button>
-          </Flex>
-        </Card>
-      </Container>
+      <Box style={{ background: 'var(--gray-1)' }} p="4">
+        <Box style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Card 
+            style={{ 
+              maxWidth: '400px',
+              width: '100%',
+              borderRadius: '16px',
+              border: '1px solid var(--red-6)',
+              background: 'var(--red-2)'
+            }}
+          >
+            <Flex direction="column" gap="4" align="center" p="6">
+              <Box style={{ opacity: 0.8 }}>
+                <FaBatteryEmpty size={32} color="var(--red-9)" />
+              </Box>
+              <Text color="red" weight="bold" size="4">Error loading gateway</Text>
+              <Text color="red" size="2" style={{ textAlign: 'center' }}>
+                {error?.message || "Gateway not found"}
+              </Text>
+              <Button 
+                onClick={() => navigate('/settings')} 
+                variant="soft" 
+                style={{ marginTop: '8px', borderRadius: '8px' }}
+              >
+                <FaArrowLeft size={14} style={{ marginRight: '8px' }} />
+                Back to Settings
+              </Button>
+            </Flex>
+          </Card>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <Box p="4">
+    <Box style={{ background: 'var(--gray-1)'}}>
       {/* Header */}
-      <Box className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10 shadow-sm">
-        <Container size="4">
-          <Flex justify="between" align="center">
-            <Button variant="soft" onClick={() => navigate('/gateways')} size="2">
-              <FaArrowLeft /> All Locations
-            </Button>
-            <Flex gap="3" align="center">
-              <Badge 
-                color={statusConfig[gateway.status].color}
-                highContrast 
-                className="uppercase"
-              >
-                <Flex gap="2" align="center">
-                  {statusConfig[gateway.status].icon}
-                  {gateway.status}
-                </Flex>
-              </Badge>
-              <Badge 
-                color={approvalStatusConfig[gateway.approval_status].color}
-                highContrast 
-                className="uppercase"
-              >
-                <Flex gap="2" align="center">
-                  {approvalStatusConfig[gateway.approval_status].icon}
-                  {gateway.approval_status}
-                </Flex>
-              </Badge>
-            </Flex>
+      <Box 
+        style={{ 
+          background: 'var(--color-surface)',
+          borderBottom: '1px solid var(--gray-4)',
+          padding: '12px 24px',
+          top: 0,
+          zIndex: 10,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+        }}
+      >
+        <Flex justify="between" align="center">
+          <Button 
+            variant="soft" 
+            onClick={() => navigate('/settings')} 
+            size="1"
+            style={{ 
+              borderRadius: '6px',
+              transition: 'all 0.2s ease',
+              fontSize: '13px'
+            }}
+          >
+            <FaArrowLeft size={12} style={{ marginRight: '6px' }} />
+            Back to Settings
+          </Button>
+          <Flex gap="2" align="center">
+            <Badge 
+              color={statusConfig[gateway.status].color}
+              variant="soft"
+              size="1"
+              style={{ 
+                borderRadius: '16px',
+                padding: '4px 8px',
+                textTransform: 'uppercase',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px'
+              }}
+            >
+              <Flex gap="1" align="center">
+                {React.cloneElement(statusConfig[gateway.status].icon as React.ReactElement)}
+                {gateway.status}
+              </Flex>
+            </Badge>
+            <Badge 
+              color={approvalStatusConfig[gateway.approval_status].color}
+              variant="soft"
+              size="1"
+              style={{ 
+                borderRadius: '16px',
+                padding: '4px 8px',
+                textTransform: 'uppercase',
+                fontSize: '10px',
+                fontWeight: '600',
+                letterSpacing: '0.3px'
+              }}
+            >
+              <Flex gap="1" align="center">
+                {React.cloneElement(approvalStatusConfig[gateway.approval_status].icon as React.ReactElement)}
+                {gateway.approval_status}
+              </Flex>
+            </Badge>
           </Flex>
-        </Container>
+        </Flex>
       </Box>
 
       {/* Main Content */}
-      <Container size="4" py="6">
+      <Box px="6" py="4" style={{ width: '100%' }}>
         {/* Gateway Header */}
-        <Card className="shadow-sm mb-6">
-          <Flex gap="4" align="center" p="4">
-            <Box className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <Card 
+          style={{ 
+            borderRadius: '16px',
+            border: '1px solid var(--gray-4)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+            marginBottom: '24px',
+            background: 'var(--color-surface)'
+          }}
+        >
+          <Flex gap="4" align="center" p="6">
+            <Box 
+              style={{ 
+                padding: '16px',
+                background: 'var(--gray-2)',
+                borderRadius: '12px',
+                border: '1px solid var(--gray-4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
               {gatewayTypeIcons[gateway.gateway_type] || <FaPlug size={24} />}
             </Box>
-            <Flex direction="column">
-              <Heading size="5" weight="bold" className="text-gray-900">
-                {gateway.model_number || gateway.name}
+            <Flex direction="column" gap="1">
+              <Heading size="5" weight="bold" style={{ color: 'var(--gray-12)' }}>
+                {gateway.location || gateway.name}
               </Heading>
-              <Text color="gray" size="2">
-                Serial: {gateway.serial_number || "Not specified"} • ID: {gateway.name}
+              <Text 
+                color="gray" 
+                size="2"
+                style={{ 
+                  fontFamily: 'var(--font-mono, monospace)',
+                  letterSpacing: '0.2px'
+                }}
+              >
+                ID: {gateway.name}
               </Text>
             </Flex>
           </Flex>
 
           {/* Approval Actions for Pending gateways */}
           {gateway.approval_status === "Pending" && (
-            <Flex gap="3" p="4" justify="end" className="bg-gray-50 rounded-b-lg">
-              <Button 
-                variant="solid" 
-                color="green" 
-                onClick={handleApprove}
-                disabled={isUpdating}
-                size="2"
-              >
-                <FaCheck /> Approve
-              </Button>
-              <Button 
-                variant="soft" 
-                color="red" 
-                onClick={() => setShowRejectDialog(true)}
-                disabled={isUpdating}
-                size="2"
-              >
-                <FaTimes /> Reject
-              </Button>
-            </Flex>
+            <Box 
+              style={{ 
+                background: 'var(--gray-2)',
+                borderTop: '1px solid var(--gray-4)',
+                borderRadius: '0 0 16px 16px'
+              }}
+            >
+              <Flex gap="3" p="4" justify="end">
+                <Button 
+                  variant="solid" 
+                  color="green" 
+                  onClick={handleApprove}
+                  disabled={isUpdating}
+                  size="2"
+                  style={{ 
+                    borderRadius: '8px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <FaCheck size={14} style={{ marginRight: '6px' }} />
+                  Approve
+                </Button>
+                <Button 
+                  variant="soft" 
+                  color="red" 
+                  onClick={() => setShowRejectDialog(true)}
+                  disabled={isUpdating}
+                  size="2"
+                  style={{ 
+                    borderRadius: '8px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <FaTimes size={14} style={{ marginRight: '6px' }} />
+                  Reject
+                </Button>
+              </Flex>
+            </Box>
           )}
         </Card>
 
         {/* Tabs */}
         <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
-          <Tabs.List className="mb-4">
-            <Tabs.Trigger value="details">Details</Tabs.Trigger>
-            <Tabs.Trigger value="connectivity">Connectivity</Tabs.Trigger>
-            <Tabs.Trigger value="history">History</Tabs.Trigger>
-          </Tabs.List>
+          <Box 
+            style={{ 
+              background: 'var(--color-surface)',
+              borderRadius: '12px',
+              padding: '8px',
+              border: '1px solid var(--gray-4)',
+              marginBottom: '20px'
+            }}
+          >
+            <Tabs.List 
+              style={{ 
+                background: 'transparent',
+                gap: '4px'
+              }}
+            >
+              <Tabs.Trigger 
+                value="details"
+                style={{
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  transition: 'all 0.2s ease',
+                  fontWeight: '500'
+                }}
+              >
+                Details
+              </Tabs.Trigger>
+              <Tabs.Trigger 
+                value="connectivity"
+                style={{
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  transition: 'all 0.2s ease',
+                  fontWeight: '500'
+                }}
+              >
+                Connectivity
+              </Tabs.Trigger>
+            </Tabs.List>
+          </Box>
 
-          <ScrollArea type="auto" scrollbars="vertical" style={{ height: 'calc(100vh - 250px)' }}>
-            <Box pr="4">
-              {activeTab === "details" && (
-                <Grid columns={{ initial: '1', md: '2' }} gap="4">
-                  <DetailCard title="Basic Information" icon={<FaInfoCircle />}>
-                    <DetailItem label="Gateway Type" value={gateway.gateway_type} icon={<FaPlug />} />
-                    <Separator size="1" />
-                    <DetailItem label="Model Number" value={gateway.model_number} icon={<FaMicrochip />} />
-                    <Separator size="1" />
-                    <DetailItem label="Serial Number" value={gateway.serial_number} icon={<FaMicrochip />} />
-                    <Separator size="1" />
-                    <DetailItem label="Firmware Version" value={gateway.firmware_version} icon={<FaMicrochip />} />
-                  </DetailCard>
+          <Box style={{ width: '100%' }}>
+            {activeTab === "details" && (
+              <Grid columns={{ initial: '1', sm: '2', lg: '3', xl: '4' }} gap="4">
+                <DetailCard title="Basic Information" icon={<FaInfoCircle />}>
+                  <DetailItem 
+                    label="Gateway Type" 
+                    value={gateway.gateway_type} 
+                    icon={<FaPlug />} 
+                  />
+                  <Separator size="1" style={{ background: 'var(--gray-4)' }} />
+                  <DetailItem 
+                    label="Model Number" 
+                    value={gateway.model_number} 
+                    icon={<FaMicrochip />} 
+                  />
+                </DetailCard>
 
-                  <DetailCard title="Location" icon={<FaMapMarkerAlt />}>
-                    <DetailItem label="Site Location" value={gateway.location} />
-                    <Separator size="1" />
-                    <DetailItem 
-                      label="Installed On" 
-                      value={formatDate(gateway.installation_date)}
-                      icon={<FaClock />}
-                    />
-                  </DetailCard>
+                <DetailCard title="Location" icon={<FaMapMarkerAlt />}>
+                  <DetailItem 
+                    label="Site Location" 
+                    value={gateway.location} 
+                  />
+                  <Separator size="1" style={{ background: 'var(--gray-4)' }} />
+                  <DetailItem 
+                    label="Installed On" 
+                    value={formatDate(gateway.installation_date)}
+                    icon={<FaClock />}
+                  />
+                </DetailCard>
 
-                  <DetailCard title="Activity" icon={<FaHistory />}>
-                    <DetailItem 
-                      label="Last Heartbeat" 
-                      value={formatDate(gateway.last_heartbeat)}
-                      icon={<FaClock />}
-                    />
-                    <Separator size="1" />
-                    <DetailItem 
-                      label="Transmissions" 
-                      value={gateway.number_of_transmissions?.toLocaleString()}
-                    />
-                    <Separator size="1" />
-                    <DetailItem 
-                      label="Last Maintenance" 
-                      value={formatDate(gateway.last_maintenance)}
-                      icon={<FaTools />}
-                    />
-                  </DetailCard>
+                <DetailCard title="Activity" icon={<FaHistory />}>
+                  <DetailItem 
+                    label="Last Heartbeat" 
+                    value={formatDate(gateway.last_heartbeat)}
+                    icon={<FaClock />}
+                  />
+                  <Separator size="1" style={{ background: 'var(--gray-4)' }} />
+                  <DetailItem 
+                    label="Transmissions" 
+                    value={gateway.number_of_transmissions}
+                    icon={<FaWifi />}
+                  />
+                  <Separator size="1" style={{ background: 'var(--gray-4)' }} />
+                </DetailCard>
 
-                  {gateway.notes && (
-                    <DetailCard title="Notes" icon={<FaInfoCircle />}>
-                      <Text className="whitespace-pre-line p-2 bg-gray-50 rounded text-gray-700">
-                        {gateway.notes}
-                      </Text>
-                    </DetailCard>
-                  )}
-                </Grid>
-              )}
+                <DetailCard title="Notes" icon={<FaInfoCircle />}>
+                  <DetailItem 
+                    label="Notes" 
+                    value={gateway.notes} 
+                  />
+                </DetailCard>
+              </Grid>
+            )}
 
-              {activeTab === "connectivity" && (
-                <Grid columns={{ initial: '1', md: '2' }} gap="4">
-                  <DetailCard title="Network" icon={<FaNetworkWired />}>
-                    <DetailItem label="IP Address" value={gateway.ip_address} icon={<FaWifi />} />
-                    <Separator size="1" />
-                    <DetailItem label="MAC Address" value={gateway.mac_address} icon={<FaNetworkWired />} />
-                  </DetailCard>
-
-                  <DetailCard title="Mobile" icon={<FaMobileAlt />}>
-                    <DetailItem label="Network Provider" value={gateway.network_provider} icon={<FaSignal />} />
-                    <Separator size="1" />
-                    <DetailItem label="SIM Card Number" value={gateway.sim_card_number} icon={<FaMobileAlt />} />
-                  </DetailCard>
-
-                  <DetailCard title="Ports" icon={<FaUsb />}>
-                    <DetailItem label="USB Port" value={gateway.usb_port} icon={<FaUsb />} />
-                  </DetailCard>
-                </Grid>
-              )}
-
-              {activeTab === "history" && (
-                <Card>
-                  <Text color="gray">History data will appear here</Text>
-                </Card>
-              )}
-            </Box>
-          </ScrollArea>
+            {activeTab === "connectivity" && (
+              <Grid columns={{ initial: '1', sm: '2', lg: '3' }} gap="4">
+                <DetailCard title="Network" icon={<FaNetworkWired />}>
+                  <DetailItem label="IP Address" value={gateway.ip_address} icon={<FaWifi />} />
+                </DetailCard>
+              </Grid>
+            )}
+          </Box>
         </Tabs.Root>
-      </Container>
+      </Box>
 
       {/* Reject Dialog */}
       <Dialog.Root open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <Dialog.Content style={{ maxWidth: 450 }}>
-          <Dialog.Title>Reject Gateway</Dialog.Title>
-          <Dialog.Description size="2" mb="4">
+        <Dialog.Content 
+          style={{ 
+            maxWidth: 450,
+            borderRadius: '16px',
+            border: '1px solid var(--gray-4)',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)'
+          }}
+        >
+          <Dialog.Title style={{ marginBottom: '8px' }}>
+            Reject Gateway
+          </Dialog.Title>
+          <Dialog.Description size="2" mb="4" style={{ color: 'var(--gray-11)' }}>
             Please provide a reason for rejecting this gateway.
           </Dialog.Description>
 
           <Flex direction="column" gap="3">
             <label>
-              <Text as="div" size="2" mb="1" weight="bold">
+              <Text as="div" size="2" mb="2" weight="medium" style={{ color: 'var(--gray-12)' }}>
                 Reason
               </Text>
               <TextArea
                 placeholder="Enter rejection reason..."
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="min-h-[100px]"
+                style={{ 
+                  minHeight: '100px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--gray-6)',
+                  resize: 'vertical'
+                }}
               />
             </label>
           </Flex>
 
-          <Flex gap="3" mt="4" justify="end">
+          <Flex gap="3" mt="5" justify="end">
             <Dialog.Close>
-              <Button variant="soft" color="gray">
+              <Button 
+                variant="soft" 
+                color="gray"
+                style={{ borderRadius: '8px' }}
+              >
                 Cancel
               </Button>
             </Dialog.Close>
@@ -401,8 +579,10 @@ const GatewayPage: React.FC = () => {
               color="red" 
               onClick={handleReject}
               disabled={!rejectReason || isUpdating || isNoting}
+              style={{ borderRadius: '8px' }}
             >
-              <FaTimes /> Confirm Reject
+              <FaTimes size={14} style={{ marginRight: '6px' }} />
+              Confirm Reject
             </Button>
           </Flex>
         </Dialog.Content>

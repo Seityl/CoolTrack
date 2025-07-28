@@ -9,6 +9,7 @@
   "basic_information_section",
   "sensor_id",
   "sensor_type",
+  "sensor_name",
   "number_of_transmissions",
   "last_heartbeat",
   "last_temperature",
@@ -18,6 +19,8 @@
   "serial_number",
   "technical_specs_section",
   "measurement_range",
+  "max_acceptable_temperature",
+  "min_acceptable_temperature",
   "accuracy",
   "resolution",
   "column_break_uylm",
@@ -26,6 +29,7 @@
   "power_consumption",
   "connectivity_section",
   "gateway_id",
+  "gateway_location",
   "relay_id",
   "column_break_ihwu",
   "communication_protocol",
@@ -36,6 +40,7 @@
   "column_break_pfnr",
   "installation_date",
   "last_calibration",
+  "calibration_offset",
   "section_break_rxpi",
   "notes"
  ],
@@ -88,6 +93,16 @@
    "fieldname": "measurement_range",
    "fieldtype": "Data",
    "label": "Measurement Range"
+  },
+  {
+   "fieldname": "min_acceptable_temperature",
+   "fieldtype": "Float",
+   "label": "Min Acceptable Temperature"
+  },
+  {
+   "fieldname": "max_acceptable_temperature",
+   "fieldtype": "Float",
+   "label": "Max Acceptable Temperature"
   },
   {
    "fieldname": "accuracy",
@@ -179,7 +194,7 @@
   },
   {
    "fieldname": "last_calibration",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "label": "Last Calibration"
   },
   {
@@ -212,11 +227,26 @@
    "fieldname": "last_temperature",
    "fieldtype": "Float",
    "label": "Last Temperature"
+  },
+  {
+   "fieldname": "sensor_name",
+   "fieldtype": "Data",
+   "label": "Sensor Name"
+  },
+  {
+   "fieldname": "gateway_location",
+   "fieldtype": "Data",
+   "label": "Gateway Location"
+  },
+  {
+   "fieldname": "calibration_offset",
+   "fieldtype": "Float",
+   "label": "Calibration Offset (\u00b0C)"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-02 13:06:20.218974",
+ "modified": "2025-06-29 13:14:48.903054",
  "modified_by": "jeriel@cooltrack.qcgrant.com",
  "module": "Cool Track",
  "name": "Sensor",

@@ -3,10 +3,9 @@
 
 import re
 import frappe
+from frappe.utils import now_datetime, add_to_date
 
 def parse_value(value):
-    if not value:
-        return None
     try:
         cleaned_value = re.sub(r"[^\d.-]", "", str(value))
         return float(cleaned_value)
@@ -31,71 +30,67 @@ def get_system_managers():
     )
 
 def send_approval_notification(doctype, device_id, status):
-    try:
-        if status != 'Pending':
-            return
-            
-        notification_exists = frappe.db.exists('Notification Log', {
-            'document_type': doctype,
-            'document_name': device_id,
-            'type': 'Alert',
-            'read': 0  # Only check unread notifications
-        })
-        if notification_exists:
-            return
-            
-        system_managers = get_system_managers()
-        if not system_managers:
-            return
-            
-        if doctype == "Sensor":
-            link = f'/sensors/{device_id}'
-        elif doctype == "Sensor Gateway":
-            link = f'/gateways/{device_id}'
+    if status != 'Pending':
+        return
+        
+    notification_exists = frappe.db.exists('Notification Log', {
+        'document_type': doctype,
+        'document_name': device_id,
+        'type': 'Alert',
+        'read': 0  # Only check unread notifications
+    })
+    if notification_exists:
+        return
+        
+    system_managers = get_system_managers()
+    if not system_managers:
+        return
+        
+    if doctype == "Sensor":
+        link = f'/sensors/{device_id}'
+    elif doctype == "Sensor Gateway":
+        link = f'/gateways/{device_id}'
 
-        subject = f"New {doctype.capitalize()} Requires Approval: {device_id}"
-        message = f"""
-            <div>
-                <p>A new <strong>{doctype}</strong> has been added to the system and requires your approval.</p>
-                
-                <div style="margin: 1rem 0;">
-                    <p style="margin-bottom: 0.5rem;"><strong>Details:</strong></p>
-                    <ul style="margin-left: 1.5rem; padding-left: 0.5rem;">
-                        <li><strong>ID:</strong> 
-                            <a href="{link}" 
-                            target="_self" 
-                            style="color: #1a73e8; text-decoration: underline; font-weight: bold;">
-                            {device_id}
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-
-                <p>Please review and approve it at your earliest convenience.</p>
+    subject = f"New {doctype.capitalize()} Requires Approval: {device_id}"
+    message = f"""
+        <div>
+            <p>A new <strong>{doctype}</strong> has been added to the system and requires your approval.</p>
+            
+            <div style="margin: 1rem 0;">
+                <p style="margin-bottom: 0.5rem;"><strong>Details:</strong></p>
+                <ul style="margin-left: 1.5rem; padding-left: 0.5rem;">
+                    <li><strong>ID:</strong> 
+                        <a href="{link}" 
+                        target="_self" 
+                        style="color: #1a73e8; text-decoration: underline; font-weight: bold;">
+                        {device_id}
+                        </a>
+                    </li>
+                </ul>
             </div>
-        """
 
-        frappe.db.savepoint('sp')
-        for manager in system_managers:
-            try:
-                frappe.get_doc({
-                    'doctype': 'Notification Log',
-                    'subject': subject,
-                    'for_user': manager,
-                    'type': 'Alert',
-                    'email_content': message,
-                    'document_type': doctype,
-                    'document_name': device_id,
-                }).insert(ignore_permissions=True)
-                frappe.db.commit()
+            <p>Please review and approve it at your earliest convenience.</p>
+        </div>
+    """
 
-            except Exception as e:
-                frappe.db.rollback()
-                frappe.log_error(frappe.get_traceback(), 'send_approval_notification()')
-                continue
-            
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), 'send_approval_notification()')
+    frappe.db.savepoint('sp')
+    for manager in system_managers:
+        try:
+            frappe.get_doc({
+                'doctype': 'Notification Log',
+                'subject': subject,
+                'for_user': manager,
+                'type': 'Alert',
+                'email_content': message,
+                'document_type': doctype,
+                'document_name': device_id,
+            }).insert(ignore_permissions=True)
+            frappe.db.commit()
+
+        except Exception as e:
+            frappe.db.rollback()
+            frappe.log_error(frappe.get_traceback(), 'send_approval_notification()')
+            continue
         
 def send_system_error_notification(error_message):
     system_managers = get_system_managers()
@@ -173,7 +168,55 @@ def create_approval_log(doctype, docname, status, automated=False):
     }).insert(ignore_permissions=True)
     frappe.db.commit()
 
+def check_sensor_gateway_heartbeat():
+    current_time = now_datetime()
+    threshold_time = add_to_date(current_time, hours=-1)
+    
+    sensor_gateways = frappe.get_all(
+        "Sensor Gateway",
+        fields=["name", "last_heartbeat", "status"],
+        filters={
+            "last_heartbeat": ["<", threshold_time],
+            "status": ["!=", "Inactive"]
+        }
+    )
+    
+    if not sensor_gateways:
+        return      
+
+    for gateway in sensor_gateways:
+        frappe.db.set_value('Sensor Gateway', gateway.name, 'status', 'Inactive')
+
+        sensors = frappe.get_all('Sensor', {'gateway_id': gateway.name, 'status': ['!=', 'Inactive']})
+        if not sensors:
+            continue
+        
+        for sensor in sensors:
+            frappe.db.set_value('Sensor', sensor.name, 'status', 'Inactive')
+
+        frappe.db.commit()
+
+def check_sensor_heartbeat():
+    current_time = now_datetime()
+    threshold_time = add_to_date(current_time, hours=-1)
+    
+    sensors = frappe.get_all(
+        "Sensor",
+        fields=["name"],
+        filters={
+            "last_heartbeat": ["<", threshold_time],
+            "status": "Active"
+        }
+    )
+    if not sensors:
+        return      
+        
+    for sensor in sensors:
+        frappe.db.set_value('Sensor', sensor.name, 'status', 'Inactive')
+        frappe.db.commit()
+
 def test():
-    docs = frappe.db.get_all('Notification Log', pluck='name')
-    for name in docs:
-        frappe.delete_doc('Notification Log', name, force=True)
+    a = frappe.get_all('Notification Log')
+    for d in a:
+        frappe.delete_doc('Notification Log', d.name)
+        frappe.db.commit()

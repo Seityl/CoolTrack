@@ -22,8 +22,6 @@ class SensorGateway(Document):
         self.update_status()
 
         if self.approval_status == 'Approved' and self.status == 'Active':
-            self.last_heartbeat = frappe.utils.now_datetime()
-        
             if not self.number_of_transmissions:
                 self.number_of_transmissions = 0
 

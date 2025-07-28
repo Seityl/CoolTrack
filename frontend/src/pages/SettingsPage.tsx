@@ -12,18 +12,23 @@ import {
   Switch,
   Grid,
   Tabs,
+  Badge,
 } from "@radix-ui/themes";
 import {
   FaSave,
   FaTimes,
   FaBell,
-  FaCheckCircle,
   FaServer,
   FaCheck,
   FaExclamationTriangle,
+  FaCog,
+  FaMapMarkerAlt,
+  FaShieldAlt,
+  FaEnvelope,
 } from "react-icons/fa";
 import { useFrappeGetDoc, useFrappeUpdateDoc } from "frappe-react-sdk";
 import GatewayList from "./gateway/GatewayList";
+
 interface CoolTrackSettings {
   name: string;
   api_url: string;
@@ -41,32 +46,50 @@ const Toast = ({ message, type, onClose }: {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 3000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: '20px',
-      right: '20px',
-      zIndex: 1000,
-      backgroundColor: type === 'success' ? 'var(--green-9)' : 'var(--red-9)',
-      color: 'white',
-      padding: '12px 16px',
-      borderRadius: '4px',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-    }}>
-      {type === 'success' ? (
-        <FaCheck size={16} />
-      ) : (
-        <FaExclamationTriangle size={16} />
-      )}
-      <Text size="2">{message}</Text>
-    </div>
+    <>
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        zIndex: 1000,
+        backgroundColor: type === 'success' ? 'var(--green-9)' : 'var(--red-9)',
+        color: 'white',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        maxWidth: '300px',
+        animation: 'slideIn 0.3s ease-out',
+      }}>
+        {type === 'success' ? (
+          <FaCheck size={16} />
+        ) : (
+          <FaExclamationTriangle size={16} />
+        )}
+        <Text size="2">{message}</Text>
+      </div>
+    </>
   );
 };
 
@@ -78,44 +101,11 @@ const SettingsPage = () => {
   const { updateDoc, loading: updating } = useFrappeUpdateDoc();
   const [formData, setFormData] = useState<Partial<CoolTrackSettings>>({});
   const [hasChanges, setHasChanges] = useState(false);
-  const [apiUrlError, setApiUrlError] = useState<string | null>(null);
-  const [debouncedApiUrl, setDebouncedApiUrl] = useState<string>("");
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'error';
     show: boolean;
   } | null>(null);
-
-  useEffect(() => {
-    if (settings?.api_url) {
-      setDebouncedApiUrl(settings.api_url);
-    }
-  }, [settings?.api_url]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (debouncedApiUrl !== settings?.api_url) {
-        validateApiUrl(debouncedApiUrl);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [debouncedApiUrl, settings?.api_url]);
-
-  const validateApiUrl = (url: string): boolean => {
-    if (!url) {
-      setApiUrlError("API URL is required");
-      return false;
-    }
-
-    try {
-      new URL(url);
-      setApiUrlError(null);
-      return true;
-    } catch (e) {
-      setApiUrlError("Please enter a valid URL (e.g., https://example.com/api)");
-      return false;
-    }
-  };
 
   const handleChange = <K extends keyof CoolTrackSettings>(field: K, value: CoolTrackSettings[K]) => {
     setFormData((prev) => ({
@@ -123,19 +113,10 @@ const SettingsPage = () => {
       [field]: value,
     }));
 
-    if (field === 'api_url') {
-      setDebouncedApiUrl(value as string);
-    }
-
     setHasChanges(true);
   };
 
   const handleSave = async () => {
-    const apiUrl = formData.api_url || settings?.api_url;
-    if (!validateApiUrl(apiUrl as string)) {
-      return;
-    }
-
     try {
       await updateDoc("Cool Track Settings", "Cool Track Settings", formData);
       mutate();
@@ -150,7 +131,6 @@ const SettingsPage = () => {
   const handleCancel = () => {
     setFormData({});
     setHasChanges(false);
-    setApiUrlError(null);
   };
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -178,8 +158,29 @@ const SettingsPage = () => {
     };
   }, []);
 
+  if (isLoading) {
+    return (
+      <Flex align="center" justify="center">
+        <Flex direction="column" align="center" gap="4">
+          <Spinner size="3" />
+        </Flex>
+      </Flex>
+    );
+  }
+
+  if (error) {
+    return (
+      <Flex align="center" justify="center">
+        <Flex direction="column" align="center" gap="4">
+          <FaExclamationTriangle size={32} color="var(--red-9)" />
+          <Text size="3" color="red">Failed to load settings</Text>
+        </Flex>
+      </Flex>
+    );
+  }
+
   return (
-    <Box className="px-4 py-3 w-full">
+    <Box style={{background: "var(--gray-1)" }}>
       {toast?.show && (
         <Toast 
           message={toast.message} 
@@ -188,121 +189,196 @@ const SettingsPage = () => {
         />
       )}
 
-      {hasChanges && (
-        <Box className="bg-white p-4 sticky top-[50px] z-50 border-b border-gray-200 shadow-md">
-          <Flex justify="end" align="end">
-            <Flex gap="2">
-              <Button variant="soft" color="gray" onClick={handleCancel}>
-                {updating ? "" : <FaTimes />} 
-                {updating ? "" : "Cancel"} 
-              </Button>
-              <Button onClick={handleSave} disabled={updating || !!apiUrlError}>
-                {updating ? <Spinner /> : <FaSave />} 
-                {updating ? "" : "Save Changes"} 
-              </Button>
-            </Flex>
+      {/* Header */}
+      <Box 
+        style={{ 
+          background: "white", 
+          borderBottom: "1px solid var(--gray-6)"
+        }}
+      >
+        <Flex justify="between" align="center" p="6">
+          <Flex align="center" gap="3">
+            <FaCog size={24} color="var(--blue-9)" />
+            <Heading size="6" weight="bold">Settings</Heading>
           </Flex>
-        </Box>
-      )}
+        </Flex>
+      </Box>
 
-      <Tabs.Root defaultValue="general">
-        <Tabs.List>
-          <Tabs.Trigger value="general">General Settings</Tabs.Trigger>
-          <Tabs.Trigger value="gateways">Locations</Tabs.Trigger>
-        </Tabs.List>
-
-        <Tabs.Content value="general">
-          <Box className="mx-auto py-4">
-            <Card className="shadow-sm w-full">
-              <Flex direction="column" gap="4" p="6">
-                <Heading size="6" mb="4">Settings</Heading>
-
-                {/* API Section */}
-                <SectionHeader title="API Configuration" icon={<FaServer />} />
-                <SettingRow 
-                  label="API URL" 
-                  description="The endpoint URL for sensor data reception"
-                  fullWidth
-                >
-                  <TextField.Root
-                    value={currentValue('api_url') || ''}
-                    onChange={(e) => handleChange('api_url', e.target.value)}
-                    placeholder="https://example.com/api/method/receive_sensor_data"
-                    className={`w-full p-2 border rounded-md ${apiUrlError ? 'border-red-500' : 'border-gray-300'}`}
-                  />
-                  {apiUrlError && (
-                    <Text size="1" color="red" mt="1">
-                      {apiUrlError}
-                    </Text>
-                  )}
-                </SettingRow>
-
-                <Separator size="4" />
-
-                {/* Approval Section */}
-                <SectionHeader title="Approval Settings" icon={<FaCheckCircle />} />
-                <SettingRow
-                  label="Require Location Approval"
-                  description="When enabled, all new locations must be manually approved before they can connect to the server."
-                >
-                  <Switch
-                    checked={currentValue('require_gateway_approval')}
-                    onCheckedChange={(checked) => handleChange('require_gateway_approval', checked)}
-                  />
-                </SettingRow>
-
-                <SettingRow
-                  label="Require Sensor Approval"
-                  description="When enabled, all new sensors must be approved before they can send data to the server."
-                >
-                  <Switch
-                    checked={currentValue('require_sensor_approval')}
-                    onCheckedChange={(checked) => handleChange('require_sensor_approval', checked)}
-                  />
-                </SettingRow>
-
-                <SettingRow
-                  label="Log Approval Activities"
-                  description="When enabled, detailed audit logs of all approval/rejection activities are generated."
-                >
-                  <Switch
-                    checked={currentValue('log_approval_activities')}
-                    onCheckedChange={(checked) => handleChange('log_approval_activities', checked)}
-                  />
-                </SettingRow>
-
-                <Separator size="4" />
-
-                {/* Notification Section */}
-                <SectionHeader title="Notification Settings" icon={<FaBell />} />
-                <SettingRow
-                  label="Send Approval Notifications"
-                  description="When enabled, email notifications are sent to system managers when a new gateway or sensor requires approval."
-                >
-                  <Switch
-                    checked={currentValue('send_approval_notifications')}
-                    onCheckedChange={(checked) => handleChange('send_approval_notifications', checked)}
-                  />
-                </SettingRow>
+      <Box p="6">
+        <Tabs.Root defaultValue="general">
+          <Tabs.List size="2" style={{ marginBottom: "24px" }}>
+            <Tabs.Trigger value="general">
+              <Flex align="center" gap="2">
+                <FaCog size={14} />
+                General Settings
               </Flex>
-            </Card>
-          </Box>
-        </Tabs.Content>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="gateways">
+              <Flex align="center" gap="2">
+                <FaMapMarkerAlt size={14} />
+                Locations
+              </Flex>
+            </Tabs.Trigger>
+          </Tabs.List>
 
-        <Tabs.Content value="gateways">
-          <Box className="mx-auto py-4">
-            <GatewayList />
-          </Box>
-        </Tabs.Content>
-      </Tabs.Root>
+          <Tabs.Content value="general">
+            <Box style={{ maxWidth: "800px" }}>
+              <Flex direction="column" gap="6">
+                
+                {/* API Configuration Card */}
+                <Card size="3" style={{ border: "1px solid var(--gray-6)" }}>
+                  <Flex direction="column" gap="5">
+                    <SectionHeader 
+                      title="API Configuration" 
+                      icon={<FaServer />} 
+                      description="The endpoint for sensor data reception"
+                    />
+                    
+                    <SettingRow 
+                      label="API Endpoint URL" 
+                      description="The complete URL where sensor data will be sent"
+                      fullWidth
+                    >
+                      <TextField.Root
+                        value={currentValue('api_url') || ''}
+                        placeholder="https://example.com/api/method/receive_sensor_data"
+                        size="3"
+                        readOnly
+                        style={{ 
+                          backgroundColor: "var(--gray-2)",
+                          cursor: "not-allowed",
+                          opacity: 0.7
+                        }}
+                      />
+                    </SettingRow>
+                  </Flex>
+                </Card>
+
+                {/* Security & Approval Card */}
+                <Card size="3" style={{ border: "1px solid var(--gray-6)" }}>
+                  <Flex direction="column" gap="5">
+                    <SectionHeader 
+                      title="Security & Approval" 
+                      icon={<FaShieldAlt />} 
+                      description="Control how new devices are approved and managed"
+                    />
+                    
+                    <SettingRow
+                      label="Location Approval Required"
+                      description="New locations must be manually approved before connecting"
+                      badge={currentValue('require_gateway_approval') ? "Enabled" : "Disabled"}
+                      badgeColor={currentValue('require_gateway_approval') ? "green" : "gray"}
+                    >
+                      <Switch
+                        size="2"
+                        checked={currentValue('require_gateway_approval')}
+                        disabled
+                        style={{
+                          cursor: "not-allowed",
+                          opacity: 0.7
+                        }}
+                      />
+                    </SettingRow>
+
+                    <Separator size="4" />
+
+                    <SettingRow
+                      label="Sensor Approval Required"
+                      description="New sensors must be approved before sending data"
+                      badge={currentValue('require_sensor_approval') ? "Enabled" : "Disabled"}
+                      badgeColor={currentValue('require_sensor_approval') ? "green" : "gray"}
+                    >
+                      <Switch
+                        size="2"
+                        checked={currentValue('require_sensor_approval')}
+                        disabled
+                        style={{
+                          cursor: "not-allowed",
+                          opacity: 0.7
+                        }}
+                      />
+                    </SettingRow>
+
+                    <Separator size="4" />
+
+                    <SettingRow
+                      label="Log Approval Activities"
+                      description="Generate detailed audit logs for all approval activities"
+                      badge={currentValue('log_approval_activities') ? "Active" : "Inactive"}
+                      badgeColor={currentValue('log_approval_activities') ? "blue" : "gray"}
+                    >
+                      <Switch
+                        size="2"
+                        checked={currentValue('log_approval_activities')}
+                        disabled
+                        style={{
+                          cursor: "not-allowed",
+                          opacity: 0.7
+                        }}
+                      />
+                    </SettingRow>
+                  </Flex>
+                </Card>
+
+                {/* Notifications Card */}
+                <Card size="3" style={{ border: "1px solid var(--gray-6)" }}>
+                  <Flex direction="column" gap="5">
+                    <SectionHeader 
+                      title="Notifications" 
+                      icon={<FaEnvelope />} 
+                      description="Configure email notifications for system events"
+                    />
+                    
+                    <SettingRow
+                      label="Approval Notifications"
+                      description="Send email notifications when devices require approval"
+                      badge={currentValue('send_approval_notifications') ? "Enabled" : "Disabled"}
+                      badgeColor={currentValue('send_approval_notifications') ? "green" : "gray"}
+                    >
+                      <Switch
+                        size="2"
+                        checked={currentValue('send_approval_notifications')}
+                        disabled
+                        style={{
+                          cursor: "not-allowed",
+                          opacity: 0.7
+                        }}
+                      />
+                    </SettingRow>
+                  </Flex>
+                </Card>
+              </Flex>
+            </Box>
+          </Tabs.Content>
+
+          <Tabs.Content value="gateways">
+            <Box>
+              <GatewayList />
+            </Box>
+          </Tabs.Content>
+        </Tabs.Root>
+      </Box>
     </Box>
   );
 };
 
-const SectionHeader = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
-  <Flex gap="3" align="center" mb="4">
-    <Box className="text-gray-500">{icon}</Box>
-    <Heading size="4" weight="medium">{title}</Heading>
+const SectionHeader = ({ 
+  title, 
+  icon, 
+  description 
+}: { 
+  title: string; 
+  icon: React.ReactNode;
+  description?: string;
+}) => (
+  <Flex direction="column" gap="2">
+    <Flex gap="3" align="center">
+      <Box style={{ color: "var(--blue-9)" }}>{icon}</Box>
+      <Heading size="5" weight="bold">{title}</Heading>
+    </Flex>
+    {description && (
+      <Text size="2" color="gray">{description}</Text>
+    )}
   </Flex>
 );
 
@@ -310,29 +386,46 @@ const SettingRow = ({
   label, 
   description,
   children,
-  fullWidth = false
+  fullWidth = false,
+  badge,
+  badgeColor = "gray"
 }: {
   label: string;
   description?: string;
   children: React.ReactNode;
   fullWidth?: boolean;
+  badge?: string;
+  badgeColor?: "gray" | "green" | "blue" | "red";
 }) => (
-  <Grid columns={fullWidth ? "1" : "2"} gap="5" mb="4">
-    <Flex direction="column">
-      <Text weight="medium">{label}</Text>
-      {description && (
-        <Text size="2" color="gray" mt="1">
-          {description}
-        </Text>
+  <Box>
+    <Grid columns={fullWidth ? "1" : "2"} gap="5" align="center">
+      <Flex direction="column" gap="2">
+        <Flex align="center" gap="2">
+          <Text size="3" weight="medium">{label}</Text>
+          {badge && (
+            <Badge size="1" color={badgeColor} variant="soft">
+              {badge}
+            </Badge>
+          )}
+        </Flex>
+        {description && (
+          <Text size="2" color="gray" style={{ lineHeight: 1.5 }}>
+            {description}
+          </Text>
+        )}
+      </Flex>
+      {!fullWidth && (
+        <Flex justify="end">
+          {children}
+        </Flex>
       )}
-    </Flex>
-    {!fullWidth && (
-      <Box>
+    </Grid>
+    {fullWidth && (
+      <Box mt="3">
         {children}
       </Box>
     )}
-    {fullWidth && children}
-  </Grid>
+  </Box>
 );
 
 export default SettingsPage;

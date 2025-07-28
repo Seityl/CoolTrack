@@ -1,6 +1,7 @@
-import { useEffect, JSX } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { JSX } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useFrappeAuth } from 'frappe-react-sdk';
+import { Flex, Spinner } from '@radix-ui/themes';
 
 interface ProtectedRouteProps {
   children: JSX.Element;
@@ -8,14 +9,19 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { currentUser, isLoading } = useFrappeAuth();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (isLoading) return; // Wait until loading is complete
-    if (!currentUser) {
-      navigate('/login');
-    }
-  }, [currentUser, isLoading, navigate]);
+  if (isLoading) {
+    return (
+      <Flex height="100vh" align="center" justify="center">
+        <Spinner size="3" />
+      </Flex>
+    );
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
   return children;
 };
 

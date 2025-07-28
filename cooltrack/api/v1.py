@@ -1,8 +1,8 @@
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import get_datetime, add_to_date
 
-from cooltrack.utils import get_settings, parse_value, send_system_error_notification
+from cooltrack.utils import get_settings, parse_value
 
 @frappe.whitelist(allow_guest=True)
 def get_api_url():
@@ -23,6 +23,13 @@ def receive_sensor_data(**kwargs):
             frappe.local.response['http_status_code'] = 400
             return frappe._dict({'error': 'No form data received'})
 
+        ip_address = form_data.get('_client_id')
+        timestamp = get_datetime(form_data.get('Time'))
+
+        gateway_time_offset = settings.gateway_time_offset
+        if gateway_time_offset and gateway_time_offset != 0:
+            timestamp = add_to_date(timestamp, hours=gateway_time_offset)
+
         gateway_id = form_data.get('GW_ID')
         sensor_id = form_data.get('ID')
         sensor_type_name = form_data.get('TYPE')
@@ -30,14 +37,24 @@ def receive_sensor_data(**kwargs):
         gateway_approval_status = 'Pending' if settings.require_gateway_approval else 'Approved'
         sensor_approval_status = 'Pending' if settings.require_sensor_approval else 'Approved'
 
-        gateway_name = frappe.db.get_value('Sensor Gateway', {'gateway_id': gateway_id})
-        if gateway_name:
-            gateway_doc = frappe.get_doc('Sensor Gateway', gateway_name)
+        gateway = frappe.db.get_value('Sensor Gateway', {'gateway_id': gateway_id})
+        if gateway:
+            gateway_doc = frappe.get_doc('Sensor Gateway', gateway)
+
+            if not gateway_doc.ip_address or gateway_doc.ip_address != ip_address:
+                gateway_doc.ip_address = ip_address
+
+            if not gateway_doc.last_heartbeat or gateway_doc.last_heartbeat < timestamp:
+                gateway_doc.last_heartbeat = timestamp
+
             gateway_doc.save(ignore_permissions=True)
+
         else:
             gateway_doc = frappe.new_doc('Sensor Gateway')
             gateway_doc.gateway_id = gateway_id
             gateway_doc.approval_status = gateway_approval_status
+            gateway_doc.ip_address = ip_address
+            gateway_doc.last_heartbeat = timestamp
             gateway_doc.insert(ignore_permissions=True)
 
         frappe.db.commit()
@@ -57,23 +74,35 @@ def receive_sensor_data(**kwargs):
             sensor_type.insert(ignore_permissions=True)
             frappe.db.commit()
 
-        sensor_name = frappe.db.get_value('Sensor', {'sensor_id': sensor_id})
-        if sensor_name:
-            sensor_doc = frappe.get_doc('Sensor', sensor_name)
+        sensor = frappe.db.get_value('Sensor', {'sensor_id': sensor_id})
+        if sensor:
+            sensor_doc = frappe.get_doc('Sensor', sensor)
             sensor_doc.last_temperature = parse_value(form_data.get('T'))
+            
+            if not sensor_doc.gateway_id or sensor_doc.gateway_id != gateway_id:
+                sensor_doc.gateway_id = gateway_id
+
+            sensor_doc.gateway_location = frappe.db.get_value('Sensor Gateway', {'gateway_id': gateway_id}, 'location')
+
+            if not sensor_doc.last_heartbeat or sensor_doc.last_heartbeat < timestamp:
+                sensor_doc.last_heartbeat = timestamp
+
             sensor_doc.save(ignore_permissions=True)
+
         else:
             sensor_doc = frappe.new_doc('Sensor')
             sensor_doc.sensor_id = sensor_id
             sensor_doc.sensor_type = sensor_type_name
             sensor_doc.gateway_id = gateway_id
+            sensor_doc.gateway_location = frappe.db.get_value('Sensor Gateway', {'gateway_id': gateway_id}, 'location')
             sensor_doc.approval_status = sensor_approval_status
             sensor_doc.last_temperature = parse_value(form_data.get('T'))
+            sensor_doc.last_heartbeat = timestamp
             sensor_doc.insert(ignore_permissions=True)
 
         frappe.db.commit()
 
-        sensor_doc.run_method("before_save")
+        sensor_doc.run_method('before_save')
         frappe.db.commit()
 
         if sensor_doc.approval_status != 'Approved':
@@ -82,10 +111,19 @@ def receive_sensor_data(**kwargs):
 
         # Process Sensor Reading
         reading = frappe.new_doc('Sensor Read')
+
+        calibration_offset = sensor_doc.calibration_offset
+        temperature_before_calibration = parse_value(form_data.get('T'))
+        temperature = 0
+        if sensor_doc.calibration_offset and sensor_doc.calibration_offset != 0:
+            temperature = temperature_before_calibration + calibration_offset
+        else:
+            temperature = temperature_before_calibration
+
         reading.update({
             'sensor_id': sensor_id,
             'sensor_type': sensor_type_name,
-            'temperature': parse_value(form_data.get('T')),
+            'temperature': temperature,
             'humidity': parse_value(form_data.get('H')),
             'voltage': parse_value(form_data.get('V')),
             'signal_strength': parse_value(form_data.get('RSSI')),
@@ -93,7 +131,11 @@ def receive_sensor_data(**kwargs):
             'sequence_number': form_data.get('SN'),
             'gateway_id': gateway_id,
             'coordinates': f"{form_data.get('E')},{form_data.get('N')}" if form_data.get('E') and form_data.get('N') else None,
-            'timestamp': form_data.get('Time') or now_datetime()
+            'timestamp': timestamp,
+            'offset': calibration_offset,
+            'temperature_before_calibration': temperature_before_calibration,
+            'received_at': form_data.get('_received_at'),
+            'time_corrected': form_data.get('_time_corrected') == 'True'
         })
         reading.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -102,10 +144,9 @@ def receive_sensor_data(**kwargs):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), 'receive_sensor_data()')
-        send_system_error_notification(str(e))
         frappe.local.response['http_status_code'] = 500
         return {'error': str(e)}
-        
+
 @frappe.whitelist()
 def get_notifications(user_email:str=None):
     if not user_email:

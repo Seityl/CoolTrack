@@ -8,12 +8,10 @@ import { Suspense, lazy, ReactNode, JSX } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 const Login = lazy(() => import("./pages/auth/Login"));
-const SignUp = lazy(() => import("./pages/auth/SignUp"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ProfilePage = lazy(() => import("./pages/user/ProfilePage"));
 const NotificationsPage = lazy(() => import("./pages/user/NotificationsPage"));
-const GatewayList = lazy(() => import("./pages/gateway/GatewayList"));
 const GatewayPage = lazy(() => import("./pages/gateway/GatewayPage"));
 const SensorList = lazy(() => import("./pages/sensor/SensorList"));
 const SensorPage = lazy(() => import("./pages/sensor/SensorPage"));
@@ -22,6 +20,8 @@ const HistoryPage = lazy( () => import("./pages/HistoryPage"));
 const LogList = lazy(() => import("./pages/LogList"));
 const AlertList = lazy(() => import("./pages/alerts/AlertList"));
 const AlertPage = lazy(() => import("./pages/alerts/AlertPage"));
+const MaintenanceList = lazy(() => import("./pages/maintenance/MaintenaceList"))
+const MaintenancePage = lazy(() => import("./pages/maintenance/MaintenancePage"))
 
 interface RedirectIfLoggedInProps {
   children: JSX.Element;
@@ -64,16 +64,6 @@ function AnimatedRoutes() {
           }
         />
         <Route
-          path="/signup"
-          element={
-            <RedirectIfLoggedIn>
-              <PageWrapper>
-                <SignUp />
-              </PageWrapper>
-            </RedirectIfLoggedIn>
-          }
-        />
-        <Route
           path="/forgot-password"
           element={
             <RedirectIfLoggedIn>
@@ -94,14 +84,15 @@ function AnimatedRoutes() {
           <Route path="/profile" element={<PageWrapper><ProfilePage /></PageWrapper>} />
         	<Route path="/notifications" element={<PageWrapper><NotificationsPage /></PageWrapper>} />
           <Route path="/settings" element={<PageWrapper><SettingsPage /></PageWrapper>} />
+          <Route path="/settings/gateways/:id" element={<PageWrapper><GatewayPage /></PageWrapper>} />
           <Route path="/history" element={<PageWrapper><HistoryPage /></PageWrapper>} />
           <Route path="/logs" element={<PageWrapper><LogList /></PageWrapper>} />
-          <Route path="/gateways" element={<PageWrapper><GatewayList /></PageWrapper>} />
-            <Route path="/gateways/:id" element={<PageWrapper><GatewayPage /></PageWrapper>} />
           <Route path="/sensors" element={<PageWrapper><SensorList /></PageWrapper>} />
             <Route path="/sensors/:id" element={<PageWrapper><SensorPage /></PageWrapper>} />
           <Route path="/alerts" element={<PageWrapper><AlertList /></PageWrapper>} />
             <Route path="/alerts/:id" element={<PageWrapper><AlertPage /></PageWrapper>} />
+          <Route path="/maintenance" element={<PageWrapper><MaintenanceList /></PageWrapper>} />
+            <Route path="/maintenance/:id" element={<PageWrapper><MaintenancePage /></PageWrapper>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

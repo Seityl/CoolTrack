@@ -1,7 +1,7 @@
 app_name = "cooltrack"
 app_title = "Cool Track"
 app_publisher = "dev@cogentmedia.co"
-app_description = "Refrigeration monitoring and alerts"
+app_description = "Temperature monitoring, logging, and alerts."
 app_email = "dev@cogentmedia.co"
 app_license = "mit"
 
@@ -148,23 +148,24 @@ app_license = "mit"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
+scheduler_events = {
 # 	"all": [
 # 		"cooltrack.tasks.all"
 # 	],
 # 	"daily": [
 # 		"cooltrack.tasks.daily"
 # 	],
-# 	"hourly": [
-# 		"cooltrack.tasks.hourly"
-# 	],
+	"hourly": [
+		"cooltrack.utils.check_sensor_gateway_heartbeat",
+		"cooltrack.utils.check_sensor_heartbeat"
+	],
 # 	"weekly": [
 # 		"cooltrack.tasks.weekly"
 # 	],
 # 	"monthly": [
 # 		"cooltrack.tasks.monthly"
 # 	],
-# }
+}
 
 # Testing
 # -------

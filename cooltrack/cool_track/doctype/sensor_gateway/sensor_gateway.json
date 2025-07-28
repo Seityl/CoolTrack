@@ -37,9 +37,8 @@
  "fields": [
   {
    "fieldname": "location",
-   "fieldtype": "Link",
-   "label": "Location",
-   "options": "Address"
+   "fieldtype": "Data",
+   "label": "Location"
   },
   {
    "fieldname": "gateway_type",
@@ -176,7 +175,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-01 12:28:03.653012",
+ "modified": "2025-06-28 18:33:19.426373",
  "modified_by": "jeriel@cooltrack.qcgrant.com",
  "module": "Cool Track",
  "name": "Sensor Gateway",
