@@ -5,3 +5,5 @@
 tags
 node_modules
 __pycache__
+cooltrack/.env.encrypted
+cooltrack/public/frontend/assets/

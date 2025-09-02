@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cool Track</title>
+    <meta name="theme-color" content="#3b82f6" />
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Apple Touch Icons (for iOS) -->
+    <link rel="apple-touch-icon" sizes="48x48" href="/public/icons/icon-48x48.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/public/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/public/icons/icon-96x96.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/public/icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/public/icons/icon-192x192.png">
+
+    <!-- Standard favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/public/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/public/icons/icon-16x16.png">
+
+    <!-- Android/Chrome -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="CoolTrack">
+
+    <!-- iOS Safari -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CoolTrack">
+
+    <!-- Windows -->
+    <meta name="msapplication-TileImage" content="/public/icons/icon-144x144.png">
+    <meta name="msapplication-TileColor" content="#007bff">
+
+    <!-- Theme colors -->
+    <meta name="theme-color" content="#007bff">
+    <meta name="msapplication-navbutton-color" content="#007bff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#007bff">
+
+    <!-- Notification settings -->
+    <meta name="firebase-messaging-sw" content="/firebase-messaging-sw.js">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
