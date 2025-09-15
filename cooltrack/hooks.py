@@ -108,8 +108,8 @@ fixtures = [
 # Uninstallation
 # ------------
 
-# before_uninstall = "cooltrack.uninstall.before_uninstall"
-# after_uninstall = "cooltrack.uninstall.after_uninstall"
+before_uninstall = "cooltrack.uninstall.before_uninstall"
+after_uninstall = "cooltrack.uninstall.after_uninstall"
 
 # Integration Setup
 # ------------------
