@@ -1,12 +1,22 @@
-.DS_Store
+# Python
 *.pyc
+__pycache__/
 *.egg-info
+
+# Vim / swap files
 *.swp
 tags
-node_modules
-__pycache__
+
+# Node.js
+node_modules/
+
+# Environment files
 cooltrack/.env.encrypted
+
+# Frontend assets (built files)
 cooltrack/public/frontend/assets/
+
+# Logs
 *.log
 *.log.*
 cooltrack/logs/
