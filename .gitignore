@@ -9,3 +9,4 @@ cooltrack/.env.encrypted
 cooltrack/public/frontend/assets/
 *.log
 *.log.*
+cooltrack/logs/
