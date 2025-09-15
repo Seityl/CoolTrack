@@ -1,4 +1,8 @@
 Flask
 Gunicorn
 flask-httpauth
+flask-cors
 firebase-admin
+cryptography
+requests
+urllib3
