@@ -8,7 +8,7 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["frappe"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -82,8 +82,28 @@ app_license = "mit"
 # Installation
 # ------------
 
-# before_install = "cooltrack.install.before_install"
-# after_install = "cooltrack.install.after_install"
+before_install = "cooltrack.install.before_install"
+after_install = "cooltrack.install.after_install"
+
+# Fixtures
+# --------
+
+# used to set up data that should be installed with the app
+
+fixtures = [
+    {
+        "doctype": "Role",
+        "filters": [
+            ["name", "in", ["Cool Track User", "Cool Track Manager"]]
+        ]
+    },
+    {
+        "doctype": "Custom Field", 
+        "filters": [
+            ["module", "=", "Cool Track"]
+        ]
+    }
+]
 
 # Uninstallation
 # ------------
