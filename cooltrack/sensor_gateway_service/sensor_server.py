@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -7,10 +6,12 @@ import socket
 import logging
 import requests
 import threading
-import struct
-from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
+
+from api_config import APIConfig
+from activity_monitor import ActivityMonitor
+from time_sync_manager import TimeSyncManager
 
 def setup_logging():
     log_level = 'DEBUG'
@@ -30,11 +31,31 @@ def setup_logging():
         logger.removeHandler(handler)
     
     console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s')
+    file_formatter = logging.Formatter('%(asctime)s - %(message)s')
     
     console_handler = logging.StreamHandler()
     console_handler.setLevel(getattr(logging, log_level))
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
+    
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            log_file_path, 
+            maxBytes=max_log_size, 
+            backupCount=backup_count,
+            encoding='utf-8'
+        )
+        file_handler.setLevel(getattr(logging, log_level))
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
+        
+        logger.info(f'File logging initialized: {log_file_path}')
+        file_handler.flush()
+        
+    except Exception as e:
+        error_msg = f'⚠️ Could not setup file logging: {e}'
+        logger.error(error_msg)
     
     urllib3_logger = logging.getLogger('urllib3')
     urllib3_logger.setLevel(logging.WARNING)
@@ -46,273 +67,91 @@ def setup_logging():
     
     return logger
 
-class TimeSyncManager:
-    """Handles time synchronization with gateways"""
-    
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        
-    def crc16_ccitt(self, data, initial=0x0000):
-        """Calculate CRC-16 CCITT checksum"""
-        crc = initial
-        for byte in data:
-            crc ^= (byte << 8)
-            for _ in range(8):
-                if crc & 0x8000:
-                    crc = ((crc << 1) ^ 0x1021) & 0xFFFF
-                else:
-                    crc = (crc << 1) & 0xFFFF
-        return crc
-    
-    def generate_time_sync_command(self, dt=None):
-        """Generate time sync command for current date/time or specified datetime"""
-        if dt is None:
-            dt = datetime.now()
-            
-        dt = dt + timedelta(hours=1)
-
-        # Command structure: 27000000FF000006[??][MM][DD][HH][mm]00[CRC]
-        # Where ?? = 0x08 (unknown field), MM = month, DD = day, HH = hour, mm = minute
-        base_data = [
-            0x27, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x06,  # Header
-            0x08,                                              # Unknown field
-            dt.month,                                          # Month
-            dt.day,                                           # Day
-            dt.hour,                                          # Hour (24-hour format)
-            dt.minute,                                        # Minute
-            0x00                                              # Separator
-        ]
-        
-        # Calculate CRC
-        crc = self.crc16_ccitt(base_data, 0x0000)
-        
-        # Add CRC to command (high byte first, then low byte)
-        command = base_data + [(crc >> 8) & 0xFF, crc & 0xFF]
-        
-        # Convert to bytes
-        command_bytes = bytes(command)
-        command_hex = command_bytes.hex().upper()
-        
-        time_str = dt.strftime('%Y-%m-%d %H:%M:%S')
-        self.logger.info(f"🕐 TIME SYNC: Generated command for {time_str}")
-        self.logger.info(f"🔧 TIME SYNC: Command hex: {command_hex}")
-        print(f"⏰ TIME SYNC: Setting gateway time to {time_str}")
-        print(f"📡 TIME SYNC: Command: {command_hex}")
-        return command_bytes
-    
-    def send_time_sync(self, client_socket, client_id):
-        """Send time sync command to gateway"""
-        try:
-            command = self.generate_time_sync_command()
-            client_socket.send(command)
-            
-            self.logger.info(f"✅ TIME SYNC: Successfully sent to gateway {client_id}")
-            print(f"✅ TIME SYNC: Command sent to gateway {client_id}")
-            return True
-            
-        except Exception as e:
-            self.logger.error(f"❌ TIME SYNC: Failed to send to {client_id}: {e}")
-            print(f"❌ TIME SYNC: Failed to send to {client_id}: {e}")
-            return False
-
-class APIConfig:
-    # Change base domain accordingly
-    def __init__(self, base_domain:str='badmc.cooltrack.co'):
-        self.base_domain = base_domain
-        self.cached_url = None
-        self.cache_timeout = 300  # 5 minutes
-        self.last_fetch_time = 0
-        
-    def get_api_url_from_server(self, force_refresh:bool=False) -> Optional[str]:
-        current_time = time.time()
-        
-        if (not force_refresh and 
-            self.cached_url and 
-            (current_time - self.last_fetch_time) < self.cache_timeout):
-            return self.cached_url
-        
-        try:
-            settings_url = f'https://{self.base_domain}/api/method/cooltrack.api.v1.get_api_url'
-            response = requests.get(settings_url, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json().get('message', {})
-                api_url = data.get('api_url')
-                if api_url:
-                    self.cached_url = api_url
-                    self.last_fetch_time = current_time
-                    return api_url
-            
-        except Exception as e:
-            logger = logging.getLogger(__name__)
-            logger.error(f'Failed to get API URL: {e}')
-            
-        return None
-
-class ActivityMonitor:
-    def __init__(self, inactivity_timeout=3600):
-        self.inactivity_timeout = inactivity_timeout
-        self.last_activity_time = time.time()
-        self.activity_lock = threading.Lock()
-        self.monitor_thread = None
-        self.stop_monitoring = threading.Event()
-        self.restart_callback = None
-        self.logger = logging.getLogger(__name__)
-        
-    def update_activity(self):
-        with self.activity_lock:
-            self.last_activity_time = time.time()
-    
-    def get_seconds_since_last_activity(self):
-        with self.activity_lock:
-            return time.time() - self.last_activity_time
-    
-    def start_monitoring(self, restart_callback):
-        self.restart_callback = restart_callback
-        self.stop_monitoring.clear()
-        
-        if self.monitor_thread and self.monitor_thread.is_alive():
-            self.logger.warning('Activity monitor already running')
-            return
-            
-        self.monitor_thread = threading.Thread(
-            target=self._monitor_activity,
-            daemon=True,
-            name='ActivityMonitor'
-        )
-        self.monitor_thread.start()
-        self.logger.info(f'Activity monitor started (timeout: {self.inactivity_timeout}s)')
-    
-    def stop_monitor(self):
-        self.stop_monitoring.set()
-        if self.monitor_thread and self.monitor_thread.is_alive():
-            self.monitor_thread.join(timeout=5)
-            self.logger.info('Activity monitor stopped')
-    
-    def _monitor_activity(self):
-        check_interval = 60  # Check every minute
-        
-        while not self.stop_monitoring.is_set():
-            try:
-                seconds_inactive = self.get_seconds_since_last_activity()
-                
-                # Log status every 15 minutes if inactive
-                if seconds_inactive > 0 and seconds_inactive % 900 == 0:
-                    minutes_inactive = int(seconds_inactive / 60)
-                    self.logger.info(f'No activity for {minutes_inactive} minutes')
-                
-                # Check if we've exceeded the inactivity timeout
-                if seconds_inactive >= self.inactivity_timeout:
-                    minutes_inactive = int(seconds_inactive / 60)
-                    self.logger.warning(f'Server inactive for {minutes_inactive} minutes, triggering restart')
-                    
-                    if self.restart_callback:
-                        self.restart_callback()
-                    break
-                
-                # Wait for next check or stop signal
-                self.stop_monitoring.wait(timeout=check_interval)
-                
-            except Exception as e:
-                self.logger.error(f'Error in activity monitor: {e}')
-                time.sleep(check_interval)
-
 class SensorServer:
-    def __init__(self, host="0.0.0.0", port=8890, enable_auto_restart=True):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.api_config = APIConfig()
-        self.server_socket = None
         self.running = False
         self.client_threads = []
+        self.server_socket = None
         self.shutdown_called = False
+        self._synced_gateways_lock = threading.Lock()
+
+        # Logging
         self.logger = logging.getLogger(__name__)
-        self.time_sync_manager = TimeSyncManager()
 
         # Configuration
-        self.connection_timeout = 3600
         self.max_clients = 3
-        self.retry_attempts = 3
         self.retry_delay = 5
-        self.enable_time_sync = True  # Enable automatic time sync
+        self.retry_attempts = 3
+        self.gateway_name = 'BADMC' # Name set on the gateway
+        self.connection_timeout = 3600
+
+        # API Configuration
+        self.api_config = APIConfig(base_domain='badmc.cooltrack.co')
 
         # Activity Monitoring
-        self.enable_auto_restart = enable_auto_restart
-        self.activity_monitor = ActivityMonitor(inactivity_timeout=3600)
         self.restart_requested = False
+        self.enable_auto_restart = True
+        self.activity_monitor = ActivityMonitor(inactivity_timeout=3600)
+
+        # Time Sync Configuration
+        self.synced_gateways = set() # Track which gateways have been synced to avoid repeated syncing
+        self.enable_time_sync = True  # Enable automatic time sync
+        self.time_sync_manager = TimeSyncManager()
         
-        # Track which gateways have been synced to avoid repeated syncing
-        self.synced_gateways = set()
-            
     def is_gateway_connection_request(self, data):
         if not data:
             return False
-        
-        # Debug: Log what we received
+
         try:
-            decoded = data.decode('utf-8', errors='ignore')
-            self.logger.debug(f"🔍 Checking if gateway connection: {repr(decoded)}")
-            print(f"🔍 DEBUG: Received data: {repr(decoded)}")
-        except:
-            self.logger.debug(f"🔍 Checking binary data: {data.hex()}")
-            print(f"🔍 DEBUG: Received binary: {data.hex()}")
-        
-        # This has to start with the name(s) set on the gateway(s)
-        if data.startswith(b'IPort-3'):
-            self.logger.info(f"✅ DETECTED: Gateway connection request")
-            print(f"✅ DETECTED: Gateway connection request")
-            return True
-        
-        # Also check if it contains BADMC anywhere (in case of encoding issues)
-        if b'BADMC' in data:
-            self.logger.info(f"✅ DETECTED: Gateway connection request (contains BADMC)")
-            print(f"✅ DETECTED: Gateway connection request (contains BADMC)")
-            return True
-        
+            expected = self.gateway_name.encode()
+            if expected in data:
+                self.logger.info(f'DETECTED: Gateway connection request (contains {self.gateway_name})')
+                return True
+
+        except Exception:
+            pass
+
         return False
 
     def handle_gateway_connection(self, client_socket, client_id, data):
         """Handle initial gateway connection and perform time sync"""
         try:
             gateway_name = data.decode('utf-8', errors='ignore').strip()
-            self.logger.info(f"🌐 GATEWAY: Connected - {gateway_name} from {client_id}")
-            print(f"🌐 GATEWAY CONNECTED: {gateway_name} ({client_id})")
+            self.logger.info(f'GATEWAY: Connected - {gateway_name} from {client_id}')
             
             # Only sync time once per gateway per session
             if self.enable_time_sync and client_id not in self.synced_gateways:
-                self.logger.info(f"🔄 TIME SYNC: Starting sync with gateway {client_id}")
-                print(f"🔄 TIME SYNC: Syncing time with {client_id}...")
+                self.logger.info(f'TIME SYNC: Starting sync with gateway {client_id}')
                 
                 # Small delay to ensure gateway is ready
                 time.sleep(0.5)
                 
                 if self.time_sync_manager.send_time_sync(client_socket, client_id):
                     self.synced_gateways.add(client_id)
-                    self.logger.info(f"✅ TIME SYNC: Completed for gateway {client_id}")
-                    print(f"✅ TIME SYNC: Successfully synced {client_id}")
+                    self.logger.info(f'TIME SYNC: Completed for gateway {client_id}')
+
                 else:
-                    self.logger.warning(f"⚠️ TIME SYNC: Failed for gateway {client_id}")
-                    print(f"⚠️ TIME SYNC: Failed to sync {client_id}")
+                    self.logger.warning(f'TIME SYNC: Failed for gateway {client_id}')
+                    
             elif client_id in self.synced_gateways:
-                self.logger.info(f"⏭️ TIME SYNC: Gateway {client_id} already synced this session")
-                print(f"⏭️ TIME SYNC: {client_id} already synced")
+                self.logger.info(f'TIME SYNC: Gateway {client_id} already synced this session')
             
             if self.enable_auto_restart:
                 self.activity_monitor.update_activity()
                 
         except Exception as e:
-            self.logger.error(f"❌ GATEWAY: Error handling connection from {client_id}: {e}")
-            print(f"❌ GATEWAY ERROR: {client_id} - {e}")
+            self.logger.error(f'GATEWAY: Error handling connection from {client_id}: {e}')
 
     def clean_corrupted_sensor_data(self, data_str):
-        # This has to start with the name(s) set on the gateway(s)
-        if 'BADMC' in data_str and 'GW_ID:' in data_str:
-            # Extract the sensor data part after BADMC
-            gw_id_index = data_str.find('GW_ID:')
+        if f'{self.gateway_name}' in data_str and 'GW_ID:' in data_str: # Has to start with the name set on the gateway
+            gw_id_index = data_str.find('GW_ID:') # Extract the sensor data part after gateway name
             if gw_id_index != -1:
                 cleaned_data = data_str[gw_id_index:]
-                self.logger.info(f"Cleaned corrupted data: {data_str[:20]}... -> {cleaned_data[:20]}...")
+                self.logger.info(f'Cleaned corrupted data: {data_str[:20]}... -> {cleaned_data[:20]}...')
                 return cleaned_data
+
         return data_str
 
     def is_valid_sensor_data(self, data_str):
@@ -403,10 +242,13 @@ class SensorServer:
                     try:
                         if '.' in value and value.replace('.', '').replace('-', '').isdigit():
                             parsed[key] = float(value)
+
                         elif value.replace('-', '').isdigit():
                             parsed[key] = int(value)
+                            
                         else:
                             parsed[key] = value
+                            
                     except (ValueError, AttributeError):
                         parsed[key] = value
         
@@ -425,10 +267,11 @@ class SensorServer:
                 
                 # If difference is over a year, use server time. Gateway time resets to 2021 when it loses power.
                 if time_diff > 365:
-                    self.logger.warning(f"Gateway time {gateway_time} is {time_diff} days off from server time, using server time")
+                    self.logger.warning(f'Gateway time {gateway_time} is {time_diff} days off from server time, using server time')
                     parsed['_original_gateway_time'] = gateway_time
                     parsed['Time'] = server_time
                     parsed['_time_corrected'] = True
+
                 else:
                     parsed['_time_corrected'] = False
                     
@@ -443,7 +286,6 @@ class SensorServer:
     def handle_client_connection(self, client_socket, address):
         client_id = f'{address[0]}:{address[1]}'
         self.logger.info(f'Handling connection from {client_id}')
-        print(f"🔌 NEW CONNECTION: {client_id}")
 
         if self.enable_auto_restart:
             self.activity_monitor.update_activity()
@@ -458,8 +300,7 @@ class SensorServer:
                     data = client_socket.recv(1024)
                     if not data:
                         self.logger.info(f'Client {client_id} disconnected')
-                        # Remove from synced gateways when disconnected
-                        self.synced_gateways.discard(client_id)
+                        self.synced_gateways.discard(client_id) # Remove from synced gateways when disconnected
                         break
 
                     if self.enable_auto_restart:
@@ -467,13 +308,13 @@ class SensorServer:
                         
                     self.logger.debug(f'Received raw data from {client_id}: {data}')
                     self.logger.debug(f'Raw data hex from {client_id}: {data.hex()}')
-                    print(f"📨 RAW DATA from {client_id}: {data}")
                     
-                    # Check for gateway connection request - do this for ALL data, not just first
+                    # Check for gateway connection request
                     if self.is_gateway_connection_request(data):
                         if not gateway_handshake_done:
                             self.handle_gateway_connection(client_socket, client_id, data)
                             gateway_handshake_done = True
+
                         continue
                     
                     buffer += data
@@ -491,9 +332,8 @@ class SensorServer:
                                     continue
 
                                 # Check if this might be a late gateway identification
-                                if 'BADMC' in decoded_str and not gateway_handshake_done:
-                                    self.logger.info(f"🔄 LATE GATEWAY DETECTION: Found BADMC in sensor data")
-                                    print(f"🔄 LATE GATEWAY DETECTION: {client_id}")
+                                if self.gateway_name in decoded_str and not gateway_handshake_done:
+                                    self.logger.info(f'LATE GATEWAY DETECTION: Found {self.gateway_name} in sensor data')
                                     self.handle_gateway_connection(client_socket, client_id, message)
                                     gateway_handshake_done = True
                                     continue
@@ -514,7 +354,7 @@ class SensorServer:
                                 if self.enable_auto_restart:
                                     self.activity_monitor.update_activity()
                                     
-                                # self.forward_to_erpnext(sensor_dict, client_id)
+                                self.forward_to_erpnext(sensor_dict, client_id)
                                 
                             except Exception as e:
                                 self.logger.error(f'Error processing message from {client_id}: {e}')
@@ -522,46 +362,54 @@ class SensorServer:
                                 
                 except socket.timeout:
                     continue
+                
                 except socket.error as e:
                     self.logger.error(f'Socket error for {client_id}: {e}')
                     break
                     
         except Exception as e:
             self.logger.error(f'Error handling client {client_id}: {e}')
+
         finally:
             try:
                 client_socket.close()
-                # Remove from synced gateways when connection closes
-                self.synced_gateways.discard(client_id)
+                self.synced_gateways.discard(client_id) # Remove from synced gateways when connection closes
                 self.logger.info(f'Closed connection to {client_id}')
+
             except:
                 pass
 
-    def decode_sensor_data(self, data_bytes):
-        """Your existing decode method"""
+    def decode_sensor_data(self, data_bytes: bytes) -> str:
         try:
             self.logger.debug(f'Decoding bytes: {data_bytes}')
             self.logger.debug(f'Bytes as hex: {data_bytes.hex()}')
-            
-            # Replace temperature symbol encoding
-            processed_bytes = data_bytes.replace(b'\xa1\xe6', '℃'.encode('utf-8'))
-            self.logger.debug(f'After temperature symbol replacement: {processed_bytes}')
-            
-            # Try UTF-8 first
+
+            start_idx = 0
+            for marker in (b'GW_ID', b'%X', b'GW:'):
+                idx = data_bytes.find(marker)
+                if idx != -1:
+                    start_idx = idx
+                    break
+
+            processed = data_bytes[start_idx:]
+            processed = processed.replace(b'\xa1\xe6', '℃'.encode('utf-8'))
+
             try:
-                text = processed_bytes.decode('utf-8')
+                text = processed.decode('utf-8')
+                text = text.replace('â\x84\x83', '℃').replace('\xa0', ' ')
                 self.logger.debug(f'Successfully decoded as UTF-8: {repr(text)}')
                 return text
-            except UnicodeDecodeError as e:
-                self.logger.debug(f'UTF-8 decode failed: {e}, trying latin-1')
-                text = processed_bytes.decode('latin-1')
+
+            except UnicodeDecodeError:
+                text = processed.decode('latin-1')
+                text = text.replace('â\x84\x83', '℃').replace('\xa0', ' ')
                 self.logger.debug(f'Successfully decoded as latin-1: {repr(text)}')
                 return text
-                
+
         except Exception as e:
             self.logger.error(f'Failed to decode sensor data: {e}')
             self.logger.error(f'Original bytes: {data_bytes}')
-            return str(data_bytes)
+            return repr(data_bytes)
 
     def forward_to_erpnext(self, sensor_data, client_id):
         for attempt in range(self.retry_attempts):
@@ -580,6 +428,7 @@ class SensorServer:
                     self.logger.info(f'Successfully forwarded data from {client_id}')
                     if self.enable_auto_restart:
                         self.activity_monitor.update_activity()
+
                     return True
 
                 elif response.status_code in [400, 422]:
@@ -594,6 +443,7 @@ class SensorServer:
                         self.logger.info(f'Successfully forwarded JSON data from {client_id}')
                         if self.enable_auto_restart:
                             self.activity_monitor.update_activity()
+
                         return True
                 
                 self.logger.warning(f'ERPNext responded with {response.status_code} for {client_id}')
@@ -631,11 +481,7 @@ class SensorServer:
 
             if self.enable_auto_restart:
                 self.activity_monitor.start_monitoring(self.request_restart)
-                self.logger.info('Auto-restart enabled: server will restart after 1 hour of inactivity')
-            
-            if self.enable_time_sync:
-                self.logger.info('⏰ Time sync enabled: gateways will be synced on connection')
-                print("⏰ TIME SYNC: Enabled - gateways will be automatically synced")
+                self.logger.info('Auto-restart enabled')
             
             self.logger.info(f'Sensor server listening on {self.host}:{self.port}')
             self.logger.info(f'Max clients: {self.max_clients}, Connection timeout: {self.connection_timeout}s')
@@ -716,7 +562,7 @@ class SensorServer:
 def main():
     logger = setup_logging()
     
-    logger.info('Starting Sensor Server with Time Sync...')
+    logger.info('Starting Sensor Server...')
     
     def is_port_in_use(port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -727,7 +573,7 @@ def main():
             except OSError:
                 return True
     
-    port = 8890
+    port = 8899
 
     if is_port_in_use(port):
         logger.error(f'Port {port} is already in use. Please check for existing processes:')
