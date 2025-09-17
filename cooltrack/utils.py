@@ -8,7 +8,7 @@ from frappe.utils import now_datetime, add_to_date
 def parse_value(value):
     try:
         cleaned_value = re.sub(r"[^\d.-]", "", str(value))
-        return float(cleaned_value)
+        return round(float(cleaned_value), 2)
     except ValueError:
         return None
 
