@@ -9,8 +9,8 @@ def get_api_url():
     settings = get_settings()
     if not settings or not settings.api_url:
         frappe.response['http_status_code'] = 400
-        return frappe._dict({'error': 'API URL not configured'})
-    return frappe._dict({'api_url': settings.api_url})
+        return {'error': 'API URL not configured'}
+    return {'api_url': settings.api_url}
 
 @frappe.whitelist(allow_guest=True)
 def receive_sensor_data(**kwargs):
@@ -34,8 +34,8 @@ def receive_sensor_data(**kwargs):
         sensor_id = form_data.get('ID')
         sensor_type_name = form_data.get('TYPE')
 
-        gateway_approval_status = 'Pending' if settings.require_gateway_approval else 'Approved'
-        sensor_approval_status = 'Pending' if settings.require_sensor_approval else 'Approved'
+        gateway_approval_status = settings.default_approval_status if settings.require_gateway_approval else 'Approved'
+        sensor_approval_status = settings.default_approval_status if settings.require_sensor_approval else 'Approved'
 
         gateway = frappe.db.get_value('Sensor Gateway', {'gateway_id': gateway_id})
         if gateway:
@@ -140,7 +140,7 @@ def receive_sensor_data(**kwargs):
         reading.insert(ignore_permissions=True)
         frappe.db.commit()
 
-        return frappe._dict({'message': 'Data received successfully'})
+        return {'message': 'Data received successfully'}
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), 'receive_sensor_data()')
