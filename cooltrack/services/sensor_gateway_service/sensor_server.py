@@ -435,7 +435,7 @@ class SensorServer:
                     response = requests.post(
                         endpoint,
                         json=sensor_data,
-                        headers={'Content-Type': 'application/json', 'User-Agent': 'CoolTrack-Sensor-Server/1.0'},
+                        headers={'Content-Type': 'application/json', 'User-Agent': 'CoolTrack-Sensor-Server'},
                         timeout=10
                     )
                     
