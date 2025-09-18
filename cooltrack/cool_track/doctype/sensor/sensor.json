@@ -13,6 +13,11 @@
   "number_of_transmissions",
   "last_heartbeat",
   "last_temperature",
+  "threshold_exceeded_duration",
+  "alerts_disabled_start",
+  "alerts_disabled_end",
+  "alerts_enabled",
+  "last_email_alert",
   "column_break_ucde",
   "status",
   "approval_status",
@@ -242,12 +247,39 @@
    "fieldname": "calibration_offset",
    "fieldtype": "Float",
    "label": "Calibration Offset (\u00b0C)"
+  },
+  {
+   "default": "30",
+   "fieldname": "threshold_exceeded_duration",
+   "fieldtype": "Int",
+   "label": "Threshold Exceeded Duration"
+  },
+  {
+   "fieldname": "alerts_disabled_start",
+   "fieldtype": "Datetime",
+   "label": "Alerts Disabled Start"
+  },
+  {
+   "fieldname": "alerts_disabled_end",
+   "fieldtype": "Datetime",
+   "label": "Alerts Disabled End"
+  },
+  {
+   "fieldname": "last_email_alert",
+   "fieldtype": "Datetime",
+   "label": "Last Email Alert"
+  },
+  {
+   "default": "0",
+   "fieldname": "alerts_enabled",
+   "fieldtype": "Check",
+   "label": "Alerts Enabled"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-29 13:14:48.903054",
- "modified_by": "jeriel@cooltrack.qcgrant.com",
+ "modified": "2025-09-18 05:46:33.499417",
+ "modified_by": "jeriel@cogentmedia.co",
  "module": "Cool Track",
  "name": "Sensor",
  "naming_rule": "By fieldname",
