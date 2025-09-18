@@ -4,7 +4,6 @@ import time
 import signal
 import socket
 import logging
-import requests
 import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
