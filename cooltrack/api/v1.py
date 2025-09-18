@@ -4,7 +4,7 @@ from frappe.utils import get_datetime, add_to_date
 
 from cooltrack.utils import get_settings, parse_value
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_api_url():
     settings = get_settings()
     if not settings or not settings.api_url:
@@ -12,7 +12,7 @@ def get_api_url():
         return {'error': 'API URL not configured'}
     return {'api_url': settings.api_url}
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def receive_sensor_data(**kwargs):
     settings = get_settings()
 
@@ -116,9 +116,9 @@ def receive_sensor_data(**kwargs):
         temperature_before_calibration = parse_value(form_data.get('T'))
         temperature = 0
         if sensor_doc.calibration_offset and sensor_doc.calibration_offset != 0:
-            temperature = temperature_before_calibration + calibration_offset
+            temperature = round((temperature_before_calibration + calibration_offset), 2)
         else:
-            temperature = temperature_before_calibration
+            temperature = round((temperature_before_calibration), 2)
 
         reading.update({
             'sensor_id': sensor_id,
