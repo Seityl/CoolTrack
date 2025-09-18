@@ -8,6 +8,7 @@ import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
+from ...utils import load_env_file
 from ..frappe_client import FrappeClient
 from .activity_monitor import ActivityMonitor
 from .time_sync_manager import TimeSyncManager
@@ -65,44 +66,6 @@ def setup_logging():
     requests_logger.propagate = False
     
     return logger
-
-def load_env_file(logger: logging, filename: str = '.env.encrypted') -> bool:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.abspath(os.path.join(script_dir, '../../'))
-    filepath = os.path.join(parent_dir, filename)
-
-    if not os.path.exists(filepath):
-        logger.warning('Environment file not found at: %s', filepath)
-        return False
-
-    logger.info('Loading environment from: %s', filepath)
-
-    try:
-        with open(filepath, 'r') as f:
-            loaded_count = 0
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#') or '=' not in line:
-                    continue
-
-                try:
-                    key, value = line.split('=', 1)
-                    key = key.strip()
-                    value = value.strip()
-                    os.environ[key] = value
-                    loaded_count += 1
-                    logger.debug('Loaded environment variable: %s', key)
-
-                except ValueError as e:
-                    logger.warning('Skipping invalid line: %.50s... Error: %s', line, e)
-                    continue
-
-        logger.info('Successfully loaded %d environment variables', loaded_count)
-        return True
-
-    except Exception as e:
-        logger.error('Failed to load environment file: %s', e)
-        return False
 
 class SensorServer:
     def __init__(self, host, port):

@@ -1,9 +1,50 @@
 # Copyright (c) 2025, dev@cogentmedia.co and contributors
 # For license information, please see license.txt
 
+import os
 import re
+import json
 import frappe
+import logging
+import requests
 from frappe.utils import now_datetime, add_to_date
+
+def load_env_file(logger: logging, filename: str = '.env.encrypted') -> bool:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    filepath = os.path.join(script_dir, filename)
+
+    if not os.path.exists(filepath):
+        logger.warning('Environment file not found at: %s', filepath)
+        return False
+
+    logger.info('Loading environment from: %s', filepath)
+
+    try:
+        with open(filepath, 'r') as f:
+            loaded_count = 0
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+
+                try:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    os.environ[key] = value
+                    loaded_count += 1
+                    logger.debug('Loaded environment variable: %s', key)
+
+                except ValueError as e:
+                    logger.warning('Skipping invalid line: %.50s... Error: %s', line, e)
+                    continue
+
+        logger.info('Successfully loaded %d environment variables', loaded_count)
+        return True
+
+    except Exception as e:
+        logger.error('Failed to load environment file: %s', e)
+        return False
 
 def parse_value(value):
     try:
@@ -16,18 +57,82 @@ def get_settings():
     return frappe.get_cached_doc('Cool Track Settings')
 
 def get_system_managers():
-    return frappe.db.sql_list(
-        """
-        SELECT name
-        FROM `tabUser` u
-        WHERE EXISTS (
-            SELECT 1
-            FROM `tabHas Role`
-            WHERE role = 'System Manager'
-            AND parent = u.name
-        )
-        """
-    )
+     return frappe.db.sql_list("""
+        SELECT DISTINCT parent 
+        FROM `tabHas Role` 
+        WHERE role = 'System Manager' 
+        AND parent != 'Administrator'
+        AND parenttype = 'User'
+    """)
+
+def get_base_url():
+    return frappe.utils.get_url()
+
+def send_push_notification(user_id='jeriel@cogentmedia.co', title='Test', body='test', data=None, click_action=None):
+    """Send push notification using jeriel's API credentials"""
+    jeriel_user_id = 'jeriel@cogentmedia.co'
+    
+    try:
+        user = frappe.get_doc('User', jeriel_user_id)
+
+        api_key = user.api_key
+        api_secret = user.get_password('api_secret')
+        
+        auth_header = f'token {api_key}:{api_secret}'
+        
+    except Exception as e:
+        frappe.log_error(f'Failed to get API credentials for {jeriel_user_id}: {str(e)}', 'Push Notification Auth Error')
+        return False
+
+    notification_data = data or {}
+    base_url = get_base_url()
+
+    if click_action:
+        notification_data['click_action'] = click_action
+
+    elif not notification_data.get('click_action'):
+        notification_data['click_action'] = base_url
+    
+    url = f'{base_url}/push/send/user'
+    
+    headers = {
+        'Authorization': auth_header,
+        'Content-Type': 'application/json'
+    }
+    
+    params = {
+        'project_name': 'cooltrack',
+        'site_name': 'badmc.cooltrack.co', 
+        'user_id': user_id,
+        'title': title,
+        'body': body,
+        'data': json.dumps(notification_data)
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, params=params, timeout=30)
+        
+        if response.status_code == 200:
+            return True
+            
+        else:
+            try:
+                error_response = response.json()
+                error_msg = error_response.get('exc', {}).get('message', 'Unknown error')
+
+            except:
+                error_msg = response.text or f'HTTP {response.status_code}'
+            
+            frappe.log_error(f'Push notification failed: {error_msg}', 'Push Notification Error')
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        frappe.log_error(f'Push notification connection error: {str(e)}', 'Push Notification Connection Error')
+        return False
+
+    except Exception as e:
+        frappe.log_error(f'Push notification unexpected error: {str(e)}', 'Push Notification Unexpected Error')
+        return False
 
 def send_approval_notification(doctype, device_id, status):
     if status != 'Pending':
