@@ -9,9 +9,9 @@ import threading
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
-from api_config import APIConfig
-from activity_monitor import ActivityMonitor
-from time_sync_manager import TimeSyncManager
+from ..frappe_client import FrappeClient
+from .activity_monitor import ActivityMonitor
+from .time_sync_manager import TimeSyncManager
 
 def setup_logging():
     log_level = 'DEBUG'
@@ -67,6 +67,44 @@ def setup_logging():
     
     return logger
 
+def load_env_file(logger: logging, filename: str = '.env.encrypted') -> bool:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.abspath(os.path.join(script_dir, '../../'))
+    filepath = os.path.join(parent_dir, filename)
+
+    if not os.path.exists(filepath):
+        logger.warning('Environment file not found at: %s', filepath)
+        return False
+
+    logger.info('Loading environment from: %s', filepath)
+
+    try:
+        with open(filepath, 'r') as f:
+            loaded_count = 0
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+
+                try:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    os.environ[key] = value
+                    loaded_count += 1
+                    logger.debug('Loaded environment variable: %s', key)
+
+                except ValueError as e:
+                    logger.warning('Skipping invalid line: %.50s... Error: %s', line, e)
+                    continue
+
+        logger.info('Successfully loaded %d environment variables', loaded_count)
+        return True
+
+    except Exception as e:
+        logger.error('Failed to load environment file: %s', e)
+        return False
+
 class SensorServer:
     def __init__(self, host, port):
         self.host = host
@@ -88,17 +126,17 @@ class SensorServer:
         self.connection_timeout = 3600
 
         # API Configuration
-        self.api_config = APIConfig(base_domain='badmc.cooltrack.co')
+        self.frappe_client = FrappeClient(logger=self.logger)
 
         # Activity Monitoring
         self.restart_requested = False
         self.enable_auto_restart = True
-        self.activity_monitor = ActivityMonitor(inactivity_timeout=3600)
+        self.activity_monitor = ActivityMonitor(logger=self.logger, inactivity_timeout=3600)
 
         # Time Sync Configuration
         self.synced_gateways = set() # Track which gateways have been synced to avoid repeated syncing
         self.enable_time_sync = True  # Enable automatic time sync
-        self.time_sync_manager = TimeSyncManager()
+        self.time_sync_manager = TimeSyncManager(logger=self.logger)
         
     def is_gateway_connection_request(self, data):
         if not data:
@@ -414,40 +452,18 @@ class SensorServer:
     def forward_to_erpnext(self, sensor_data, client_id):
         for attempt in range(self.retry_attempts):
             try:
-                endpoint = self.api_config.get_api_url_from_server()
+                endpoint = self.frappe_client.get_api_url_from_server()
                 if not endpoint:
                     self.logger.error(f'No API endpoint available for {client_id}')
                     return False
                 
-                response = requests.post(
-                    endpoint,
-                    data=sensor_data
-                )
-                
-                if response.status_code == 200:
-                    self.logger.info(f'Successfully forwarded data from {client_id}')
+                success = self.frappe_client.forward_sensor_data(sensor_data)
+                if success:
                     if self.enable_auto_restart:
                         self.activity_monitor.update_activity()
 
                     return True
 
-                elif response.status_code in [400, 422]:
-                    response = requests.post(
-                        endpoint,
-                        json=sensor_data,
-                        headers={'Content-Type': 'application/json', 'User-Agent': 'CoolTrack-Sensor-Server'},
-                        timeout=10
-                    )
-                    
-                    if response.status_code == 200:
-                        self.logger.info(f'Successfully forwarded JSON data from {client_id}')
-                        if self.enable_auto_restart:
-                            self.activity_monitor.update_activity()
-
-                        return True
-                
-                self.logger.warning(f'ERPNext responded with {response.status_code} for {client_id}')
-                
                 if attempt < self.retry_attempts - 1:
                     time.sleep(self.retry_delay)
                     
@@ -486,7 +502,7 @@ class SensorServer:
             self.logger.info(f'Sensor server listening on {self.host}:{self.port}')
             self.logger.info(f'Max clients: {self.max_clients}, Connection timeout: {self.connection_timeout}s')
             
-            test_url = self.api_config.get_api_url_from_server()
+            test_url = self.frappe_client.get_api_url_from_server()
             if test_url:
                 self.logger.info(f'API endpoint ready: {test_url}')
 
@@ -563,6 +579,8 @@ def main():
     logger = setup_logging()
     
     logger.info('Starting Sensor Server...')
+
+    load_env_file(logger)
     
     def is_port_in_use(port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -583,7 +601,7 @@ def main():
         sys.exit(1)
     
     server = SensorServer(host='0.0.0.0', port=port)
-    
+
     def signal_handler(signum, frame):
         signal_name = signal.Signals(signum).name
         logger.info(f'Received {signal_name} signal, shutting down gracefully...')
