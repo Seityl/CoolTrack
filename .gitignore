@@ -20,3 +20,5 @@ cooltrack/public/frontend/assets/
 *.log
 *.log.*
 cooltrack/logs/
+cooltrack/public/frontend/index.html
+cooltrack/www/frontend.html
