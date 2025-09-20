@@ -1,93 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Box,
-  Button,
   Flex,
   Heading,
   TextField,
   Text,
   Card,
-  Spinner,
   Separator
 } from "@radix-ui/themes";
 import { useFrappePostCall } from "frappe-react-sdk";
-import { FaCheck, FaExclamationTriangle, FaEnvelope, FaArrowLeft } from "react-icons/fa";
+import { FaCheck, FaEnvelope, FaArrowLeft } from "react-icons/fa";
 import { isEmailValid } from "../../utils/validations";
 import logo from "../../assets/logo.svg";
 
-const Toast = ({
-  message,
-  type,
-  onClose,
-}: {
-  message: string;
-  type: "success" | "error";
-  onClose: () => void;
-}) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000); // Increased duration for better UX
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <>
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
-      <div
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 1000,
-          backgroundColor: type === "success" ? "var(--green-9)" : "var(--red-9)",
-          color: "white",
-          padding: "12px 16px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          maxWidth: "300px",
-          animation: "slideIn 0.3s ease-out",
-        }}
-      >
-        {type === "success" ? (
-          <FaCheck size={16} />
-        ) : (
-          <FaExclamationTriangle size={16} />
-        )}
-        <Text size="2">{message}</Text>
-      </div>
-    </>
-  );
-};
+// Import reusable components and hooks
+import { ActionButton } from "../../components/common/ActionButton";
+import { ToastContainer } from "../../components/common/ToastContainer";
+import { useToast } from "../../hooks/useToast";
+import { useMobile } from "../../hooks/useMobile";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [emailSent, setEmailSent] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string>("");
 
   const { call } = useFrappePostCall(
     "frappe.core.doctype.user.user.reset_password"
   );
+
+  const { toasts, showSuccess, showError, hideToast } = useToast();
+  const isMobile = useMobile();
 
   const validateEmail = (emailValue: string): boolean => {
     if (!emailValue.trim()) {
@@ -112,25 +56,24 @@ const ForgotPassword = () => {
     if (validationError) {
       setValidationError("");
     }
-    
-    // Clear previous toast messages
-    if (toastMessage) {
-      setToastMessage(null);
-    }
   };
 
   const handleReset = async () => {
+    // Prevent double submission
+    if (isSubmitting) return;
+
     if (!validateEmail(email)) {
+      showError("Please enter a valid email address");
       return;
     }
 
-    setToastMessage(null);
     setIsSubmitting(true);
 
     try {
       await call({ user: email });
-      setToastMessage("Password reset instructions have been sent to your email.");
-      setToastType("success");
+      showSuccess("Password reset instructions have been sent to your email.", {
+        duration: 6000
+      });
       setEmailSent(true);
     } catch (err: any) {
       let errorMessage = "There was an error resetting your password. Please try again.";
@@ -145,8 +88,9 @@ const ForgotPassword = () => {
         }
       }
       
-      setToastMessage(errorMessage);
-      setToastType("error");
+      showError(errorMessage, {
+        duration: 8000
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +104,6 @@ const ForgotPassword = () => {
 
   const handleResendEmail = () => {
     setEmailSent(false);
-    setToastMessage(null);
     handleReset();
   };
 
@@ -169,31 +112,45 @@ const ForgotPassword = () => {
       <Flex
         align="center"
         justify="center"
+        px="4"
         style={{ 
           overflow: "hidden",
-          minHeight: "100vh"
+          minHeight: "100vh",
+          padding: isMobile ? "16px" : "24px"
         }}
       >
         <Card 
-          size="3" 
+          size={isMobile ? "2" : "3"}
           style={{ 
             width: "100%", 
-            maxWidth: 420
+            maxWidth: isMobile ? 350 : 420
           }}
         >
-          <Flex direction="column" gap="4" align="center">
+          <Flex direction="column" gap={isMobile ? "3" : "4"} align="center">
             <img
               src={logo}
               alt="Cool Track Logo"
-              style={{ height: 60, marginBottom: 8 }}
+              style={{ 
+                height: isMobile ? 50 : 60, 
+                marginBottom: isMobile ? 4 : 8 
+              }}
             />
             
             {!emailSent ? (
               <>
-                <Heading size="6" align="center" weight="bold">
+                <Heading 
+                  size={isMobile ? "5" : "6"} 
+                  align="center" 
+                  weight="bold"
+                >
                   Forgot your password?
                 </Heading>
-                <Text size="3" align="center" color="gray" style={{ maxWidth: "320px" }}>
+                <Text 
+                  size={isMobile ? "2" : "3"} 
+                  align="center" 
+                  color="gray" 
+                  style={{ maxWidth: isMobile ? "280px" : "320px" }}
+                >
                   No worries! Enter your email address and we'll send you a link to reset your password.
                 </Text>
 
@@ -209,7 +166,7 @@ const ForgotPassword = () => {
                     value={email}
                     onChange={handleEmailChange}
                     onKeyPress={handleKeyPress}
-                    size="3"
+                    size={isMobile ? "2" : "3"}
                     mt="2"
                     color={validationError ? "red" : undefined}
                     style={{ 
@@ -228,33 +185,28 @@ const ForgotPassword = () => {
                   )}
                 </Box>
 
-                <Button
-                  variant="solid"
-                  color="blue"
-                  size="3"
-                  onClick={handleReset}
-                  disabled={isSubmitting || !email}
-                  style={{ 
-                    width: "100%",
-                    height: "44px",
-                    fontWeight: "500"
-                  }}
+                <Flex 
+                  justify="center" 
+                  width="100%" 
+                  mt="2"
                 >
-                  {isSubmitting ? (
-                    <Flex align="center" gap="2">
-                      <Spinner size="2" />
-                    </Flex>
-                  ) : (
-                    "Send Reset Link"
-                  )}
-                </Button>
+                  <ActionButton
+                    label="Send Reset Link"
+                    onClick={handleReset}
+                    variant="solid"
+                    color="blue"
+                    size={isMobile ? "2" : "3"}
+                    disabled={isSubmitting || !email}
+                    loading={isSubmitting}
+                  />
+                </Flex>
               </>
             ) : (
               <>
                 <div
                   style={{
-                    width: "60px",
-                    height: "60px",
+                    width: isMobile ? "50px" : "60px",
+                    height: isMobile ? "50px" : "60px",
                     borderRadius: "50%",
                     backgroundColor: "var(--green-3)",
                     display: "flex",
@@ -263,42 +215,51 @@ const ForgotPassword = () => {
                     marginBottom: "8px"
                   }}
                 >
-                  <FaCheck size={24} color="var(--green-9)" />
+                  <FaCheck size={isMobile ? 20 : 24} color="var(--green-9)" />
                 </div>
                 
-                <Heading size="6" align="center" weight="bold">
+                <Heading 
+                  size={isMobile ? "5" : "6"} 
+                  align="center" 
+                  weight="bold"
+                >
                   Check your email
                 </Heading>
-                <Text size="3" align="center" color="gray" style={{ maxWidth: "320px" }}>
+                <Text 
+                  size={isMobile ? "2" : "3"} 
+                  align="center" 
+                  color="gray" 
+                  style={{ maxWidth: isMobile ? "280px" : "320px" }}
+                >
                   We've sent a password reset link to <strong>{email}</strong>
                 </Text>
 
                 <Separator size="4" />
 
-                <Text size="2" align="center" color="gray" style={{ maxWidth: "300px" }}>
+                <Text 
+                  size="2" 
+                  align="center" 
+                  color="gray" 
+                  style={{ maxWidth: isMobile ? "260px" : "300px" }}
+                >
                   Didn't receive the email? Check your spam folder or try again.
                 </Text>
 
-                <Button
-                  variant="outline"
-                  color="blue"
-                  size="3"
-                  onClick={handleResendEmail}
-                  disabled={isSubmitting}
-                  style={{ 
-                    width: "100%",
-                    height: "44px",
-                    fontWeight: "500"
-                  }}
+                <Flex 
+                  justify="center" 
+                  width="100%" 
+                  mt="2"
                 >
-                  {isSubmitting ? (
-                    <Flex align="center" gap="2">
-                      <Spinner size="2" />
-                    </Flex>
-                  ) : (
-                    "Resend Email"
-                  )}
-                </Button>
+                  <ActionButton
+                    label="Resend Email"
+                    onClick={handleResendEmail}
+                    variant="outline"
+                    color="blue"
+                    size={isMobile ? "2" : "3"}
+                    disabled={isSubmitting}
+                    loading={isSubmitting}
+                  />
+                </Flex>
               </>
             )}
 
@@ -316,13 +277,8 @@ const ForgotPassword = () => {
         </Card>
       </Flex>
 
-      {toastMessage && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setToastMessage(null)}
-        />
-      )}
+      {/* Toast Container for notifications */}
+      <ToastContainer toasts={toasts} onClose={hideToast} />
     </>
   );
 };

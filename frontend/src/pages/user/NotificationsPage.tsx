@@ -1,87 +1,20 @@
-import {
-  Box,
-  Flex,
-  Text,
-  Card,
-  Spinner,
-  Button,
-  Heading,
-} from "@radix-ui/themes";
-import { FaBell, FaCheck, FaSync, FaSyncAlt } from "react-icons/fa";
-import { FiRefreshCw } from "react-icons/fi";
-import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
+import { useState } from "react";
+import { Box, Flex, Text, Card } from "@radix-ui/themes";
+import { FaBell, FaCheck, FaSyncAlt } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
-
-interface Notification {
-  name: string;
-  subject: string;
-  message: string | null;
-  created_on: string;
-  seen: boolean;
-}
-
-interface NotificationResponse {
-  message: Notification[];
-}
-
-const Toast = ({ message, type, onClose }: { 
-  message: string; 
-  type: 'success' | 'error';
-  onClose: () => void;
-}) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <>
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        zIndex: 1000,
-        backgroundColor: type === 'success' ? 'var(--green-9)' : 'var(--red-9)',
-        color: 'white',
-        padding: '12px 16px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        maxWidth: '300px',
-        animation: 'slideIn 0.3s ease-out',
-      }}>
-        {type === 'success' ? (
-          <FaCheck size={16} />
-        ) : (
-          <FaBell size={16} />
-        )}
-        <Text size="2" style={{ flex: 1 }}>{message}</Text>
-      </div>
-    </>
-  );
-};
+import { useNotifications } from '../../hooks/useNotifications';
+import { PageLayout } from '../../components/common/PageLayout';
+import { ActionButton } from '../../components/common/ActionButton';
+import { EmptyState } from '../../components/common/EmptyState';
+import { ErrorState } from '../../components/common/ErrorState';
+import { LoadingState } from '../../components/common/LoadingState';
+import { Toast } from '../../components/common/Toast';
+import { 
+  formatDetailedDate, 
+  stripHtmlTags
+} from "../../utils/notificationUtils";
 
 const NotificationsPage = () => {
-  const { currentUser } = useFrappeAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
@@ -89,15 +22,19 @@ const NotificationsPage = () => {
     show: boolean;
   } | null>(null);
 
-  const { data, isValidating, mutate, error } = useFrappeGetCall<NotificationResponse>(
-    "cooltrack.api.v1.get_notifications",
-    { user_email: currentUser }
-  );
-
-  const { call: markAsRead } = useFrappePostCall('cooltrack.api.v1.update_notification');
-
-  const notifications = data?.message ?? [];
-  const unreadCount = notifications.filter(n => !n.seen).length;
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    markAsRead,
+    markAllAsRead,
+    refreshNotifications
+  } = useNotifications({
+    autoRefreshInterval: 30000,
+    recentCount: 100, // Show all notifications on the page
+    revalidateOnFocus: true
+  });
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, show: true });
@@ -109,8 +46,7 @@ const NotificationsPage = () => {
 
   const handleMarkAsRead = async (notificationName: string) => {
     try {
-      await markAsRead({ notification: notificationName });
-      mutate();
+      await markAsRead(notificationName);
       showToast("Notification marked as read", "success");
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -119,15 +55,11 @@ const NotificationsPage = () => {
   };
 
   const handleMarkAllAsRead = async () => {
-    const unreadNotifications = notifications.filter(n => !n.seen);
-    if (unreadNotifications.length === 0) return;
+    if (unreadCount === 0) return;
     
     try {
-      await Promise.all(unreadNotifications.map(n =>
-        markAsRead({ notification: n.name })
-      ));
-      mutate();
-      showToast(`${unreadNotifications.length} notifications marked as read`, "success");
+      await markAllAsRead();
+      showToast(`${unreadCount} notifications marked as read`, "success");
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       showToast("Failed to mark all notifications as read", "error");
@@ -137,7 +69,7 @@ const NotificationsPage = () => {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await mutate();
+      refreshNotifications();
       showToast("Notifications refreshed", "success");
     } catch (error) {
       showToast("Failed to refresh notifications", "error");
@@ -149,206 +81,84 @@ const NotificationsPage = () => {
     }
   };
 
-  if (isValidating && !isRefreshing) {
+  // Loading state
+  if (isLoading && !isRefreshing) {
     return (
-      <Box style={{ background: "var(--gray-1)" }}>
-        <Box 
-          style={{ 
-            background: "white", 
-            borderBottom: "1px solid var(--gray-6)",
-            top: 0,
-            zIndex: 10
-          }}
-        >
-          <Flex 
-            justify="between" 
-            align="center" 
-            p={{ initial: "4", sm: "6" }}
-          >
-            <Flex align="center" gap="3" style={{ minWidth: 0, flex: 1 }}>
-              <FaBell 
-                size={window.innerWidth < 768 ? 20 : 24} 
-                color="var(--blue-9)" 
-              />
-              <Heading 
-                size={{ initial: "4", sm: "6" }} 
-                weight="bold"
-                style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}
-              >
-                Notifications
-              </Heading>
-            </Flex>
-          </Flex>
-        </Box>
-        
-        <Flex height="60vh" align="center" justify="center">
-          <Flex direction="column" align="center" gap="4">
-            <Spinner size="3" />
-          </Flex>
-        </Flex>
-      </Box>
+      <PageLayout
+        title="Notifications"
+        icon={<FaBell size={window.innerWidth < 768 ? 20 : 24} />}
+      >
+        <LoadingState />
+      </PageLayout>
     );
   }
 
-  if (error && !data) {
+  // Error state
+  if (error && !notifications.length) {
     return (
-      <Box style={{ background: "var(--gray-1)" }}>
-        <Box 
-          style={{ 
-            background: "white", 
-            borderBottom: "1px solid var(--gray-6)",
-            top: 0,
-            zIndex: 10
-          }}
-        >
-          <Flex 
-            justify="between" 
-            align="center" 
-            p={{ initial: "4", sm: "6" }}
-          >
-            <Flex align="center" gap="3" style={{ minWidth: 0, flex: 1 }}>
-              <FaBell 
-                size={window.innerWidth < 768 ? 20 : 24} 
-                color="var(--blue-9)" 
-              />
-              <Heading 
-                size={{ initial: "4", sm: "6" }} 
-                weight="bold"
-                style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis"
-                }}
-              >
-                Notifications
-              </Heading>
-            </Flex>
-          </Flex>
-        </Box>
-        
-        <Flex height="60vh" align="center" justify="center" p="4">
-          <Flex direction="column" align="center" gap="4" style={{ textAlign: "center" }}>
-            <FaBell 
-              size={window.innerWidth < 768 ? 24 : 32} 
-              color="var(--red-9)" 
-            />
-            <Text 
-              size={{ initial: "2", sm: "3" }} 
-              color="red"
-            >
-              Failed to load notifications
-            </Text>
-            <Text 
-              size={{ initial: "1", sm: "2" }} 
-              color="red"
-              style={{ maxWidth: "280px", lineHeight: 1.5 }}
-            >
-              {error.message}
-            </Text>
-            <Button 
-              variant="soft" 
-              color="red" 
-              onClick={handleRefresh}
-              size={{ initial: "2", sm: "3" }}
-            >
-              Retry
-            </Button>
-          </Flex>
-        </Flex>
-      </Box>
+      <PageLayout
+        title="Notifications"
+        icon={<FaBell size={window.innerWidth < 768 ? 20 : 24} />}
+      >
+        <ErrorState
+          title="Failed to load notifications"
+          message={error.message}
+          icon={<FaBell size={window.innerWidth < 768 ? 24 : 32} />}
+          onRetry={handleRefresh}
+        />
+      </PageLayout>
     );
   }
 
-  return (
-    <Box style={{ background: "var(--gray-1)" }}>
-      {toast?.show && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={closeToast} 
+  // Header actions
+  const headerActions = (
+    <Flex gap="2" align="center" style={{ flexShrink: 0 }}>
+      {unreadCount > 0 && (
+        <ActionButton
+          icon={<FaCheck size={window.innerWidth < 768 ? 10 : 12} />}
+          label="Mark all read"
+          onClick={handleMarkAllAsRead}
+          variant="soft"
+          color="green"
+          size={window.innerWidth < 768 ? "1" : "2"}
+          hideTextOnMobile={true}
         />
       )}
+      <ActionButton
+        icon={<FaSyncAlt className={isRefreshing ? "animate-spin" : ""} size={window.innerWidth < 768 ? 12 : 14} />}
+        label="Refresh"
+        onClick={handleRefresh}
+        loading={isRefreshing}
+        variant="soft"
+        size={window.innerWidth < 768 ? "2" : "3"}
+        hideTextOnMobile={true}
+      />
+    </Flex>
+  );
 
-      {/* Header */}
-      <Box 
-        style={{ 
-          background: "white", 
-          borderBottom: "1px solid var(--gray-6)",
-          top: 0,
-          zIndex: 10
-        }}
+  return (
+    <>
+      {toast?.show && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 1000
+        }}>
+          <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={closeToast} 
+          />
+        </div>
+      )}
+
+      <PageLayout
+        title="Notifications"
+        icon={<FaBell size={window.innerWidth < 768 ? 20 : 24} />}
+        actions={headerActions}
       >
-        <Flex 
-          justify="between" 
-          align="center" 
-          p={{ initial: "4", sm: "6" }}
-          gap="3"
-        >
-          <Flex align="center" gap="3" style={{ minWidth: 0, flex: 1 }}>
-            <FaBell 
-              size={window.innerWidth < 768 ? 20 : 24} 
-              color="var(--blue-9)" 
-            />
-            <Heading 
-              size={{ initial: "4", sm: "6" }} 
-              weight="bold"
-              style={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis"
-              }}
-            >
-              Notifications
-            </Heading>
-          </Flex>
-          
-          <Flex gap="2" align="center" style={{ flexShrink: 0 }}>
-            {unreadCount > 0 && (
-              <Button 
-                variant="soft" 
-                color="green" 
-                onClick={handleMarkAllAsRead}
-                size={{ initial: "1", sm: "2" }}
-                style={{
-                  fontSize: window.innerWidth < 768 ? "11px" : "14px"
-                }}
-              >
-                <Flex align="center" gap="2">
-                  <FaCheck size={window.innerWidth < 768 ? 10 : 12} />
-                  <span style={{ display: window.innerWidth < 380 ? "none" : "inline" }}>
-                    Mark all read
-                  </span>
-                </Flex>
-              </Button>
-            )}
-                  <Button 
-                      variant="soft" 
-                      onClick={handleRefresh}
-                      disabled={isRefreshing}
-                      size={{ initial: "2", sm: "3" }}
-                      style={{
-                          flexShrink: 0,
-                          fontSize: window.innerWidth < 768 ? "12px" : "14px"
-                      }}
-                  >
-                      <FaSyncAlt 
-                          className={isRefreshing ? "animate-spin" : ""}
-                          size={window.innerWidth < 768 ? 12 : 14}
-                      />
-                      <span style={{ display: window.innerWidth < 480 ? "none" : "inline" }}>
-                          Refresh
-                      </span>
-                  </Button>
-          </Flex>
-        </Flex>
-      </Box>
 
-      {/* Content */}
-      <Box p={{ initial: "3", sm: "4", md: "6" }}>
         <AnimatePresence mode="wait">
           {isRefreshing ? (
             <motion.div
@@ -358,9 +168,7 @@ const NotificationsPage = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              <Flex direction="column" align="center" gap="4" py="8">
-                <Spinner size="3" />
-              </Flex>
+              <LoadingState height="40vh" />
             </motion.div>
           ) : (
             <motion.div
@@ -385,12 +193,7 @@ const NotificationsPage = () => {
                       <Card
                         style={{
                           border: `1px solid var(--gray-6)`,
-                          borderLeft: !notification.seen 
-                            ? `4px solid var(--blue-9)` 
-                            : `1px solid var(--gray-6)`,
-                          backgroundColor: !notification.seen 
-                            ? 'var(--blue-1)' 
-                            : 'white',
+                          backgroundColor: 'white',
                           transition: 'all 0.2s ease',
                           cursor: 'pointer',
                           overflow: 'hidden'
@@ -404,19 +207,23 @@ const NotificationsPage = () => {
                             direction={{ initial: "column", sm: "row" }}
                           >
                             <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-                              <Text 
-                                size={{ initial: "2", sm: "3" }}
-                                weight={!notification.seen ? "bold" : "medium"}
-                                style={{ 
-                                  color: !notification.seen ? 'var(--gray-12)' : 'var(--gray-11)',
-                                  marginBottom: '8px',
-                                  wordWrap: "break-word",
-                                  overflowWrap: "break-word",
-                                  hyphens: "auto",
-                                  lineHeight: 1.4
-                                }}
-                                dangerouslySetInnerHTML={{ __html: notification.subject }}
-                              />
+                              <Flex align="center" gap="2" mb="2">
+                                <Text 
+                                  size={{ initial: "2", sm: "3" }}
+                                  weight="medium"
+                                  style={{ 
+                                    color: 'var(--gray-12)',
+                                    wordWrap: "break-word",
+                                    overflowWrap: "break-word",
+                                    hyphens: "auto",
+                                    lineHeight: 1.4,
+                                    flex: 1
+                                  }}
+                                >
+                                  {stripHtmlTags(notification.subject)}
+                                </Text>
+                              </Flex>
+                              
                               {notification.message ? (
                                 <Text 
                                   size={{ initial: "1", sm: "2" }}
@@ -428,8 +235,9 @@ const NotificationsPage = () => {
                                     overflowWrap: "break-word",
                                     hyphens: "auto"
                                   }}
-                                  dangerouslySetInnerHTML={{ __html: notification.message }}
-                                />
+                                >
+                                  {stripHtmlTags(notification.message)}
+                                </Text>
                               ) : (
                                 <Text 
                                   size={{ initial: "1", sm: "2" }} 
@@ -439,6 +247,7 @@ const NotificationsPage = () => {
                                   No message content.
                                 </Text>
                               )}
+                              
                               <Text 
                                 size="1" 
                                 color="gray" 
@@ -448,38 +257,20 @@ const NotificationsPage = () => {
                                   lineHeight: 1.3
                                 }}
                               >
-                                {new Intl.DateTimeFormat('en-US', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true,
-                                }).format(new Date(notification.created_on.replace(' ', 'T')))}
+                                {formatDetailedDate(notification.created_on)}
                               </Text>
                             </Flex>
+                            
                             {!notification.seen && (
-                              <Button
-                                size={{ initial: "1", sm: "2" }}
+                              <ActionButton
+                                icon={<FaCheck size={window.innerWidth < 768 ? 10 : 12} />}
+                                label="Mark read"
+                                onClick={() => handleMarkAsRead(notification.name)}
                                 variant="soft"
                                 color="blue"
-                                onClick={() => handleMarkAsRead(notification.name)}
-                                style={{ 
-                                  flexShrink: 0,
-                                  alignSelf: window.innerWidth < 640 ? "flex-start" : "auto",
-                                  marginTop: window.innerWidth < 640 ? "8px" : "0"
-                                }}
-                              >
-                                <Flex align="center" gap="1">
-                                  <FaCheck size={window.innerWidth < 768 ? 10 : 12} />
-                                  <span style={{ 
-                                    display: window.innerWidth < 380 ? "none" : "inline",
-                                    fontSize: window.innerWidth < 768 ? "11px" : "12px"
-                                  }}>
-                                    Mark read
-                                  </span>
-                                </Flex>
-                              </Button>
+                                size={window.innerWidth < 768 ? "1" : "2"}
+                                hideTextOnMobile={true}
+                              />
                             )}
                           </Flex>
                         </Box>
@@ -487,92 +278,66 @@ const NotificationsPage = () => {
                     </motion.div>
                   ))
                 ) : (
-                  <Card style={{ border: "1px solid var(--gray-6)" }}>
-                    <Flex 
-                      direction="column" 
-                      align="center" 
-                      gap="4" 
-                      p={{ initial: "6", sm: "8" }}
-                    >
-                      <FaBell 
-                        size={window.innerWidth < 768 ? 24 : 32} 
-                        color="var(--gray-8)" 
-                      />
-                      <Text 
-                        size={{ initial: "2", sm: "3" }} 
-                        color="gray"
-                        style={{ textAlign: "center" }}
-                      >
-                        No notifications yet
-                      </Text>
-                      <Text 
-                        size={{ initial: "1", sm: "2" }} 
-                        color="gray" 
-                        style={{ 
-                          textAlign: 'center',
-                          maxWidth: "280px",
-                          lineHeight: 1.5
-                        }}
-                      >
-                        We'll notify you when there's something new
-                      </Text>
-                    </Flex>
-                  </Card>
+                  <EmptyState
+                    title="No notifications yet"
+                    description="We'll notify you when there's something new"
+                    icon={<FaBell size={window.innerWidth < 768 ? 24 : 32} />}
+                  />
                 )}
               </Flex>
             </motion.div>
           )}
         </AnimatePresence>
-      </Box>
 
-      <style>
-        {`
-          .animate-spin {
-            animation: spin 1s linear infinite;
-          }
-          
-          @keyframes spin {
-            from {
-              transform: rotate(0deg);
-            }
-            to {
-              transform: rotate(360deg);
-            }
-          }
-
-          /* Mobile-specific optimizations */
-          @media (max-width: 767px) {
-            /* Ensure proper touch targets */
-            button {
-              min-height: 44px;
+        <style>
+          {`
+            .animate-spin {
+              animation: spin 1s linear infinite;
             }
             
-            /* Optimize spacing for mobile */
-            [data-radix-themes] {
-              --space-3: 12px;
-              --space-4: 16px;
+            @keyframes spin {
+              from {
+                transform: rotate(0deg);
+              }
+              to {
+                transform: rotate(360deg);
+              }
             }
-          }
-          
-          @media (max-width: 479px) {
-            /* Extra small screens */
-            [data-radix-themes] {
-              --space-3: 8px;
-              --space-4: 12px;
-            }
-          }
 
-          @media (max-width: 380px) {
-            /* Very small screens - stack buttons vertically */
-            .header-actions {
-              flex-direction: column;
-              width: 100%;
-              gap: 8px;
+            /* Mobile-specific optimizations */
+            @media (max-width: 767px) {
+              /* Ensure proper touch targets */
+              button {
+                min-height: 44px;
+              }
+              
+              /* Optimize spacing for mobile */
+              [data-radix-themes] {
+                --space-3: 12px;
+                --space-4: 16px;
+              }
             }
-          }
-        `}
-      </style>
-    </Box>
+            
+            @media (max-width: 479px) {
+              /* Extra small screens */
+              [data-radix-themes] {
+                --space-3: 8px;
+                --space-4: 12px;
+              }
+            }
+
+            @media (max-width: 380px) {
+              /* Very small screens - stack buttons vertically */
+              .header-actions {
+                flex-direction: column;
+                width: 100%;
+                gap: 8px;
+              }
+            }
+          `}
+        </style>
+      </PageLayout>
+    </>
   );
 };
 

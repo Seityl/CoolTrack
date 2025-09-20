@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Flex, Box } from "@radix-ui/themes";
 import { Outlet } from "react-router-dom";
-import TopMenu from "../navigation/TopMenu";
-import Sidebar from "../navigation/SideBar";
+import TopMenu from "./TopMenu/TopMenu";
+import Sidebar from "./SideBar/Sidebar";
 
 const Workspace = () => {
   const sidebarWidth = 200;

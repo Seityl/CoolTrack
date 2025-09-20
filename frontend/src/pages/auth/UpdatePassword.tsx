@@ -1,80 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   Box,
   Flex,
   Text,
   Card,
-  Button,
   TextField,
   Heading,
-  Spinner,
   Separator,
 } from "@radix-ui/themes";
 import { FaLock, FaEye, FaEyeSlash, FaCheck, FaExclamationTriangle, FaArrowLeft } from "react-icons/fa";
 import { useFrappePostCall } from "frappe-react-sdk";
 import logo from "../../assets/logo.svg";
 
-const Toast = ({
-  message,
-  type,
-  onClose,
-}: {
-  message: string;
-  type: "success" | "error";
-  onClose: () => void;
-}) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <>
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
-      <div
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 1000,
-          backgroundColor: type === "success" ? "var(--green-9)" : "var(--red-9)",
-          color: "white",
-          padding: "12px 16px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          maxWidth: "300px",
-          animation: "slideIn 0.3s ease-out",
-        }}
-      >
-        {type === "success" ? (
-          <FaCheck size={16} />
-        ) : (
-          <FaExclamationTriangle size={16} />
-        )}
-        <Text size="2">{message}</Text>
-      </div>
-    </>
-  );
-};
+import { ActionButton } from "../../components/common/ActionButton";
+import { ToastContainer } from "../../components/common/ToastContainer";
+import { ErrorState } from "../../components/common/ErrorState";
+import { useToast } from "../../hooks/useToast";
+import { useMobile } from "../../hooks/useMobile";
 
 const UpdatePassword = () => {
   const [searchParams] = useSearchParams();
@@ -86,12 +29,12 @@ const UpdatePassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [validationError, setValidationError] = useState("");
 
   const { call: updatePassword } = useFrappePostCall("frappe.core.doctype.user.user.update_password");
+  const { toasts, showSuccess, showError, hideToast } = useToast();
+  const isMobile = useMobile();
 
   const validatePassword = (pwd: string): string[] => {
     const errors: string[] = [];
@@ -131,11 +74,6 @@ const UpdatePassword = () => {
     if (validationError) {
       setValidationError("");
     }
-    
-    // Clear previous toast messages
-    if (toastMessage) {
-      setToastMessage(null);
-    }
   };
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,25 +84,22 @@ const UpdatePassword = () => {
     if (validationError) {
       setValidationError("");
     }
-    
-    // Clear previous toast messages
-    if (toastMessage) {
-      setToastMessage(null);
-    }
   };
 
   const handleSubmit = async () => {
+    // Prevent double submission
+    if (isSubmitting) return;
+
     if (!key) {
-      setToastMessage("Invalid or missing reset key.");
-      setToastType("error");
+      showError("Invalid or missing reset key.");
       return;
     }
 
     if (!validateForm()) {
+      showError("Please fix the form errors before continuing");
       return;
     }
 
-    setToastMessage(null);
     setIsSubmitting(true);
 
     try {
@@ -173,8 +108,9 @@ const UpdatePassword = () => {
         new_password: password,
       });
 
-      setToastMessage("Password updated successfully!");
-      setToastType("success");
+      showSuccess("Password updated successfully! Redirecting...", {
+        duration: 3000
+      });
       setPasswordUpdated(true);
 
       // Redirect to login after 3 seconds
@@ -196,8 +132,9 @@ const UpdatePassword = () => {
         }
       }
       
-      setToastMessage(errorMessage);
-      setToastType("error");
+      showError(errorMessage, {
+        duration: 8000
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -209,69 +146,48 @@ const UpdatePassword = () => {
     }
   };
 
+  const handleRetryNewReset = () => {
+    navigate("/forgot-password");
+  };
+
   // If no key is provided, show error state
   if (!key) {
     return (
       <Flex
         align="center"
         justify="center"
+        px="4"
         style={{ 
           overflow: "hidden",
-          minHeight: "100vh"
+          minHeight: "100vh",
+          maxHeight: "100vh",
+          padding: isMobile ? "16px" : "24px"
         }}
       >
         <Card 
-          size="3" 
+          size={isMobile ? "2" : "3"}
           style={{ 
             width: "100%", 
-            maxWidth: 420
+            maxWidth: isMobile ? 350 : 420
           }}
         >
-          <Flex direction="column" gap="4" align="center">
+          <Flex direction="column" gap={isMobile ? "3" : "4"} align="center">
             <img
               src={logo}
               alt="Cool Track Logo"
-              style={{ height: 60, marginBottom: 8 }}
+              style={{ 
+                height: isMobile ? 50 : 60, 
+                marginBottom: isMobile ? 4 : 8 
+              }}
             />
             
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "50%",
-                backgroundColor: "var(--red-3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "8px"
-              }}
-            >
-              <FaExclamationTriangle size={24} color="var(--red-9)" />
-            </div>
-            
-            <Heading size="6" align="center" weight="bold">
-              Invalid Reset Link
-            </Heading>
-            <Text size="3" align="center" color="gray" style={{ maxWidth: "320px" }}>
-              This password reset link is invalid or has expired. Please request a new password reset.
-            </Text>
-
-            <Separator size="4" />
-
-            <Link to="/forgot-password" style={{ textDecoration: "none", width: "100%" }}>
-              <Button
-                variant="solid"
-                color="blue"
-                size="3"
-                style={{ 
-                  width: "100%",
-                  height: "44px",
-                  fontWeight: "500"
-                }}
-              >
-                Request New Reset
-              </Button>
-            </Link>
+            <ErrorState
+              title="Invalid Reset Link"
+              message="This password reset link is invalid or has expired. Please request a new password reset."
+              icon={<FaExclamationTriangle size={24} />}
+              onRetry={handleRetryNewReset}
+              retryLabel="Request New Reset"
+            />
 
             <Separator size="4" />
 
@@ -294,32 +210,46 @@ const UpdatePassword = () => {
       <Flex
         align="center"
         justify="center"
+        px="4"
         style={{ 
           overflow: "hidden",
-          minHeight: "100vh"
+          minHeight: "100vh",
+          padding: isMobile ? "16px" : "24px"
         }}
       >
         <Card 
-          size="3" 
+          size={isMobile ? "2" : "3"}
           style={{ 
             width: "100%", 
-            maxWidth: 420
+            maxWidth: isMobile ? 350 : 420
           }}
         >
-          <Flex direction="column" gap="4" align="center">
+          <Flex direction="column" gap={isMobile ? "3" : "4"} align="center">
             <img
               src={logo}
               alt="Cool Track Logo"
-              style={{ height: 60, marginBottom: 8 }}
+              style={{ 
+                height: isMobile ? 50 : 60, 
+                marginBottom: isMobile ? 4 : 8 
+              }}
             />
             
             {!passwordUpdated ? (
               <>
-                <Heading size="6" align="center" weight="bold">
+                <Heading 
+                  size={isMobile ? "5" : "6"} 
+                  align="center" 
+                  weight="bold"
+                >
                   Update your password
                 </Heading>
-                <Text size="3" align="center" color="gray" style={{ maxWidth: "320px" }}>
-                  Enter your new password below. Make sure it's strong and secure.
+                <Text 
+                  size={isMobile ? "2" : "3"} 
+                  align="center" 
+                  color="gray" 
+                  style={{ maxWidth: isMobile ? "280px" : "320px" }}
+                >
+                  Enter your new password below.
                 </Text>
 
                 <Separator size="4" />
@@ -329,47 +259,45 @@ const UpdatePassword = () => {
                   <Text as="label" size="2" weight="medium" color="gray">
                     New Password
                   </Text>
-                  <Box style={{ position: "relative" }}>
-                    <TextField.Root
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter new password"
-                      value={password}
-                      onChange={handlePasswordChange}
-                      onKeyPress={handleKeyPress}
-                      size="3"
-                      mt="2"
-                      color={validationError ? "red" : undefined}
-                      style={{ 
-                        paddingLeft: "10px",
-                        paddingRight: "10px",
-                        border: validationError ? "1px solid var(--red-8)" : undefined
-                      }}
-                    >
-                      <TextField.Slot side="left">
-                        <FaLock size={14} color="var(--gray-9)" />
-                      </TextField.Slot>
-                      <TextField.Slot side="right">
-                        <button
+                  <TextField.Root
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter new password"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    onKeyPress={handleKeyPress}
+                    size={isMobile ? "2" : "3"}
+                    mt="2"
+                    color={validationError ? "red" : undefined}
+                    style={{ 
+                      paddingLeft: "10px",
+                      paddingRight: "10px",
+                      border: validationError ? "1px solid var(--red-8)" : undefined
+                    }}
+                  >
+                    <TextField.Slot side="left">
+                      <FaLock size={14} color="var(--gray-9)" />
+                    </TextField.Slot>
+                    <TextField.Slot side="right">
+                      <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         style={{ 
-                            background: "none", 
-                            border: "none", 
-                            cursor: "pointer",
-                            padding: "4px",
-                            display: "flex",
-                            alignItems: "center"
+                          background: "none", 
+                          border: "none", 
+                          cursor: "pointer",
+                          padding: "4px",
+                          display: "flex",
+                          alignItems: "center"
                         }}
-                        >
+                      >
                         {showPassword ? (
-                            <FaEyeSlash size={14} color="var(--gray-9)" />
+                          <FaEyeSlash size={14} color="var(--gray-9)" />
                         ) : (
-                            <FaEye size={14} color="var(--gray-9)" />
+                          <FaEye size={14} color="var(--gray-9)" />
                         )}
-                        </button>
+                      </button>
                     </TextField.Slot>
-                    </TextField.Root>
-                  </Box>
+                  </TextField.Root>
                 </Box>
 
                 {/* Confirm Password Field */}
@@ -377,47 +305,45 @@ const UpdatePassword = () => {
                   <Text as="label" size="2" weight="medium" color="gray">
                     Confirm Password
                   </Text>
-                  <Box style={{ position: "relative" }}>
-                    <TextField.Root
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm new password"
-                      value={confirmPassword}
-                      onChange={handleConfirmPasswordChange}
-                      onKeyPress={handleKeyPress}
-                      size="3"
-                      mt="2"
-                      color={validationError ? "red" : undefined}
-                      style={{ 
-                        paddingLeft: "10px",
-                        paddingRight: "10px",
-                        border: validationError ? "1px solid var(--red-8)" : undefined
-                      }}
-                    >
-                      <TextField.Slot side="left">
-                        <FaLock size={14} color="var(--gray-9)" />
-                      </TextField.Slot>
-                                        <TextField.Slot side="right">
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      style={{ 
-                        background: "none", 
-                        border: "none", 
-                        cursor: "pointer",
-                        padding: "4px",
-                        display: "flex",
-                        alignItems: "center"
-                      }}
-                    >
-                      {showConfirmPassword ? (
-                        <FaEyeSlash size={14} color="var(--gray-9)" />
-                      ) : (
-                        <FaEye size={14} color="var(--gray-9)" />
-                      )}
-                    </button>
-                  </TextField.Slot>
-                    </TextField.Root>
-                  </Box>
+                  <TextField.Root
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm new password"
+                    value={confirmPassword}
+                    onChange={handleConfirmPasswordChange}
+                    onKeyPress={handleKeyPress}
+                    size={isMobile ? "2" : "3"}
+                    mt="2"
+                    color={validationError ? "red" : undefined}
+                    style={{ 
+                      paddingLeft: "10px",
+                      paddingRight: "10px",
+                      border: validationError ? "1px solid var(--red-8)" : undefined
+                    }}
+                  >
+                    <TextField.Slot side="left">
+                      <FaLock size={14} color="var(--gray-9)" />
+                    </TextField.Slot>
+                    <TextField.Slot side="right">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        style={{ 
+                          background: "none", 
+                          border: "none", 
+                          cursor: "pointer",
+                          padding: "4px",
+                          display: "flex",
+                          alignItems: "center"
+                        }}
+                      >
+                        {showConfirmPassword ? (
+                          <FaEyeSlash size={14} color="var(--gray-9)" />
+                        ) : (
+                          <FaEye size={14} color="var(--gray-9)" />
+                        )}
+                      </button>
+                    </TextField.Slot>
+                  </TextField.Root>
                   {validationError && (
                     <Text size="1" color="red" mt="1">
                       {validationError}
@@ -429,13 +355,17 @@ const UpdatePassword = () => {
                 <Box
                   width="100%"
                   style={{
-                    padding: "12px",
+                    padding: isMobile ? "10px" : "12px",
                     borderRadius: "6px",
                     backgroundColor: "var(--gray-2)",
                     border: "1px solid var(--gray-4)",
                   }}
                 >
-                  <Text size="2" weight="medium" style={{ marginBottom: "8px", display: "block" }}>
+                  <Text 
+                    size={isMobile ? "1" : "2"} 
+                    weight="medium" 
+                    style={{ marginBottom: "8px", display: "block" }}
+                  >
                     Password Requirements:
                   </Text>
                   <Flex direction="column" gap="1">
@@ -445,33 +375,28 @@ const UpdatePassword = () => {
                   </Flex>
                 </Box>
 
-                <Button
-                  variant="solid"
-                  color="blue"
-                  size="3"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || !password || !confirmPassword}
-                  style={{ 
-                    width: "100%",
-                    height: "44px",
-                    fontWeight: "500"
-                  }}
+                <Flex 
+                  justify="center" 
+                  width="100%" 
+                  mt="2"
                 >
-                  {isSubmitting ? (
-                    <Flex align="center" gap="2">
-                      <Spinner size="2" />
-                    </Flex>
-                  ) : (
-                    "Update Password"
-                  )}
-                </Button>
+                  <ActionButton
+                    label="Update Password"
+                    onClick={handleSubmit}
+                    variant="solid"
+                    color="blue"
+                    size={isMobile ? "2" : "3"}
+                    disabled={isSubmitting || !password || !confirmPassword}
+                    loading={isSubmitting}
+                  />
+                </Flex>
               </>
             ) : (
               <>
                 <div
                   style={{
-                    width: "60px",
-                    height: "60px",
+                    width: isMobile ? "50px" : "60px",
+                    height: isMobile ? "50px" : "60px",
                     borderRadius: "50%",
                     backgroundColor: "var(--green-3)",
                     display: "flex",
@@ -480,35 +405,49 @@ const UpdatePassword = () => {
                     marginBottom: "8px"
                   }}
                 >
-                  <FaCheck size={24} color="var(--green-9)" />
+                  <FaCheck size={isMobile ? 20 : 24} color="var(--green-9)" />
                 </div>
                 
-                <Heading size="6" align="center" weight="bold">
+                <Heading 
+                  size={isMobile ? "5" : "6"} 
+                  align="center" 
+                  weight="bold"
+                >
                   Password Updated!
                 </Heading>
-                <Text size="3" align="center" color="gray" style={{ maxWidth: "320px" }}>
-                  Your password has been successfully updated. You will be redirected to the login page shortly.
+                <Text 
+                  size={isMobile ? "2" : "3"} 
+                  align="center" 
+                  color="gray" 
+                  style={{ maxWidth: isMobile ? "280px" : "320px" }}
+                >
+                  Your password has been successfully updated. You will be redirected shortly.
                 </Text>
 
                 <Separator size="4" />
 
-                <Text size="2" align="center" color="gray" style={{ maxWidth: "300px" }}>
-                  Redirecting to login in a few seconds...
+                <Text 
+                  size="2" 
+                  align="center" 
+                  color="gray" 
+                  style={{ maxWidth: isMobile ? "260px" : "300px" }}
+                >
+                  Redirecting in a few seconds...
                 </Text>
 
-                <Button
-                  variant="outline"
-                  color="blue"
-                  size="3"
-                  onClick={() => navigate("/login")}
-                  style={{ 
-                    width: "100%",
-                    height: "44px",
-                    fontWeight: "500"
-                  }}
+                <Flex 
+                  justify="center" 
+                  width="100%" 
+                  mt="2"
                 >
-                  Go to Login Now
-                </Button>
+                  <ActionButton
+                    label="Redirect Now"
+                    onClick={() => navigate("/login")}
+                    variant="outline"
+                    color="blue"
+                    size={isMobile ? "2" : "3"}
+                  />
+                </Flex>
               </>
             )}
 
@@ -526,13 +465,8 @@ const UpdatePassword = () => {
         </Card>
       </Flex>
 
-      {toastMessage && (
-        <Toast
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setToastMessage(null)}
-        />
-      )}
+      {/* Toast Container for notifications */}
+      <ToastContainer toasts={toasts} onClose={hideToast} />
     </>
   );
 };

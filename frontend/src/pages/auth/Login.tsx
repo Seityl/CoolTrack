@@ -7,90 +7,35 @@ import {
   Box,
   Text,
   TextField,
-  Button,
-  Spinner,
   Checkbox,
   Separator
 } from "@radix-ui/themes";
-import { FaCheck, FaExclamationTriangle, FaEye, FaEyeSlash, FaLock, FaUser } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaLock, FaUser } from "react-icons/fa";
 import logo from "../../assets/logo.svg";
 import { useFrappeAuth } from "frappe-react-sdk";
 
-const Toast = ({
-  message,
-  type,
-  onClose,
-}: {
-  message: string;
-  type: "success" | "error";
-  onClose: () => void;
-}) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000); // Increased to 5 seconds for better UX
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <>
-      <style>
-        {`
-          @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
-      <div
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 1000,
-          backgroundColor: type === "success" ? "var(--green-9)" : "var(--red-9)",
-          color: "white",
-          padding: "12px 16px",
-          borderRadius: "8px",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          maxWidth: "300px",
-          animation: "slideIn 0.3s ease-out",
-        }}
-      >
-        {type === "success" ? (
-          <FaCheck size={16} />
-        ) : (
-          <FaExclamationTriangle size={16} />
-        )}
-        <Text size="2">{message}</Text>
-      </div>
-    </>
-  );
-};
+import { ActionButton } from "../../components/common/ActionButton";
+import { LoadingState } from "../../components/common/LoadingState";
+import { ToastContainer } from "../../components/common/ToastContainer";
+import { useToast } from "../../hooks/useToast";
+import { useMobile } from "../../hooks/useMobile";
 
 const Login = () => {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
-  const [loginError, setLoginError] = useState<string | undefined>();
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [validationErrors, setValidationErrors] = useState<{
     username?: string;
     password?: string;
   }>({});
 
-  const { login } = useFrappeAuth();
+  const { login, isLoading } = useFrappeAuth();
   const navigate = useNavigate();
+  const { toasts, showSuccess, showError, hideToast } = useToast();
+  const isMobile = useMobile();
 
   // Load saved credentials if remember me was checked
   useEffect(() => {
@@ -102,6 +47,11 @@ const Login = () => {
       setRememberMe(true);
     }
   }, []);
+
+  // Show loading state while auth is loading
+  if (isLoading) {
+    return <LoadingState message="Checking authentication..." />;
+  }
 
   const validateForm = (): boolean => {
     const errors: { username?: string; password?: string } = {};
@@ -127,7 +77,6 @@ const Login = () => {
     if (validationErrors.username) {
       setValidationErrors(prev => ({ ...prev, username: undefined }));
     }
-    if (loginError) setLoginError(undefined);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,16 +84,20 @@ const Login = () => {
     if (validationErrors.password) {
       setValidationErrors(prev => ({ ...prev, password: undefined }));
     }
-    if (loginError) setLoginError(undefined);
   };
 
   const onSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     
-    if (!validateForm()) return;
+    // Prevent double submission
+    if (isSubmitting) return;
+    
+    if (!validateForm()) {
+      showError("Please fix the form errors before continuing");
+      return;
+    }
     
     setIsSubmitting(true);
-    setLoginError(undefined);
     
     try {
       await login({ username, password });
@@ -158,10 +111,20 @@ const Login = () => {
         localStorage.removeItem("cooltrack_remember");
       }
       
-      navigate("/");
+      showSuccess("Successfully logged in! Redirecting...", {
+        duration: 2000
+      });
+      
+      // Delay navigation slightly to show success message
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
     } catch (err: unknown) {
-      let errorMessage = "Login failed. Please try again.";
-      setLoginError(errorMessage);
+      const errorMessage = "Login failed. Please check your credentials and try again.";
+      showError(errorMessage, {
+        duration: 6000,
+        autoClose: true
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -181,27 +144,39 @@ const Login = () => {
         px="4"
         style={{ 
           overflow: "hidden",
-          minHeight: "100vh"
+          minHeight: "100vh",
+          padding: isMobile ? "16px" : "24px"
         }}
       >
         <Card 
-          size="3" 
+          size={isMobile ? "2" : "3"}
           style={{ 
             width: "100%", 
-            maxWidth: 420
+            maxWidth: isMobile ? 350 : 420
           }}
         >
           <form onSubmit={onSubmit}>
-            <Flex direction="column" gap="4" align="center">
+            <Flex direction="column" gap={isMobile ? "3" : "4"} align="center">
               <img
                 src={logo}
                 alt="Cool Track Logo"
-                style={{ height: 60, marginBottom: 8 }}
+                style={{ 
+                  height: isMobile ? 50 : 60, 
+                  marginBottom: isMobile ? 4 : 8 
+                }}
               />
-              <Heading size="6" align="center" weight="bold">
+              <Heading 
+                size={isMobile ? "5" : "6"} 
+                align="center" 
+                weight="bold"
+              >
                 Welcome to Cool Track
               </Heading>
-              <Text size="3" align="center" color="gray">
+              <Text 
+                size={isMobile ? "2" : "3"} 
+                align="center" 
+                color="gray"
+              >
                 Sign in to your account to continue
               </Text>
 
@@ -216,7 +191,7 @@ const Login = () => {
                   onChange={handleUsernameChange}
                   onKeyPress={handleKeyPress}
                   value={username}
-                  size="3"
+                  size={isMobile ? "2" : "3"}
                   mt="2"
                   color={validationErrors.username ? "red" : undefined}
                   style={{ 
@@ -245,7 +220,7 @@ const Login = () => {
                   onChange={handlePasswordChange}
                   onKeyPress={handleKeyPress}
                   value={password}
-                  size="3"
+                  size={isMobile ? "2" : "3"}
                   mt="2"
                   color={validationErrors.password ? "red" : undefined}
                   style={{ 
@@ -285,7 +260,14 @@ const Login = () => {
                 )}
               </Box>
 
-              <Flex justify="between" align="center" width="100%" mt="2">
+              <Flex 
+                justify="between" 
+                align="center" 
+                width="100%" 
+                mt="2"
+                direction={isMobile ? "column" : "row"}
+                gap={isMobile ? "2" : "0"}
+              >
                 <Flex align="center" gap="2">
                   <Checkbox
                     checked={rememberMe}
@@ -303,39 +285,28 @@ const Login = () => {
                 </Link>
               </Flex>
 
-              <Button
-                variant="solid"
-                color="blue"
-                size="3"
-                type="submit"
-                disabled={isSubmitting}
-                style={{ 
-                  width: "100%",
-                  height: "44px",
-                  fontWeight: "500"
-                }}
+              <Flex 
+                justify="center" 
+                width="100%" 
+                mt="2"
               >
-                {isSubmitting ? (
-                  <Flex align="center" gap="2">
-                    <Spinner size="2" />
-                  </Flex>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
-
+                <ActionButton
+                  label="Sign In"
+                  onClick={onSubmit}
+                  variant="solid"
+                  color="blue"
+                  size={isMobile ? "2" : "3"}
+                  disabled={isSubmitting}
+                  loading={isSubmitting}
+                />
+              </Flex>
             </Flex>
           </form>
         </Card>
       </Flex>
 
-      {loginError && (
-        <Toast
-          message={loginError}
-          type="error"
-          onClose={() => setLoginError(undefined)}
-        />
-      )}
+      {/* Toast Container for notifications */}
+      <ToastContainer toasts={toasts} onClose={hideToast} />
     </>
   );
 };
