@@ -171,3 +171,34 @@ def update_notification(notification: str):
     notification = frappe.get_doc('Notification Log', notification)
     notification.read = 1
     notification.save(ignore_permissions=True)
+    
+@frappe.whitelist()
+def mark_all_notifications_read(user_email):
+    unread_notifications = frappe.get_list(
+        'Notification Log',
+        filters={
+            'for_user': user_email,
+            'read': 0
+        },
+        fields=['name']
+    )
+    
+    if not unread_notifications:
+        return {'message': 'No unread notifications found', 'count': 0}
+    
+    notification_names = [notif['name'] for notif in unread_notifications]
+    
+    frappe.db.set_value(
+        'Notification Log',
+        {'name': ['in', notification_names]},
+        'read',
+        1,
+        update_modified=True
+    )
+    
+    frappe.db.commit()
+    
+    return {
+        'message': f'{len(notification_names)} notifications marked as read',
+        'count': len(notification_names)
+    }
