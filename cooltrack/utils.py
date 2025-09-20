@@ -7,7 +7,7 @@ import json
 import frappe
 import logging
 import requests
-from frappe.utils import now_datetime, add_to_date
+from frappe.utils import now_datetime, add_to_date, get_datetime
 
 def load_env_file(logger: logging, filename: str = '.env.encrypted') -> bool:
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -513,12 +513,11 @@ def send_reconnection_alert(doctype, device_id):
 
 def send_temperature_threshold_alert(sensor_id, sensor_name, max_temp, threshold, duration_minutes):
     system_managers = get_system_managers()
-    recipients = system_managers
-    # recipients = system_managers + ['ste@badmc.org']
+    recipients = system_managers + ['ste@badmc.org']
 
     link = f'/sensors/{sensor_id}'
-    hours = duration_minutes // 60
-    minutes = duration_minutes % 60
+    hours = round((duration_minutes // 60), 2)
+    minutes = round((duration_minutes % 60), 2)
     duration_text = f'{hours}h {minutes}m' if hours > 0 else f'{minutes}m'
 
     subject = f'Temperature Alert: {sensor_name}'
@@ -634,12 +633,12 @@ def check_temperature_threshold_violation(doc, method=None):
 
     # Check if alerts are disabled for this time period
     current_time = frappe.utils.now_datetime()
-    if doc.alerts_disabled_start and doc.alerts_disabled_end:
-        alerts_disabled_start = doc.alerts_disabled_start
-        alerts_disabled_end = doc.alerts_disabled_end
-        
-        # Check if current time is within the disabled period
+    alerts_disabled_start = get_datetime(doc.alerts_disabled_start) if doc.alerts_disabled_start else None
+    alerts_disabled_end = get_datetime(doc.alerts_disabled_end) if doc.alerts_disabled_end else None
+
+    if alerts_disabled_start and alerts_disabled_end:
         if alerts_disabled_start <= current_time <= alerts_disabled_end:
+            # skip checking during disabled period
             return
 
     one_month_ago = add_to_date(now_datetime(), days=-30)
