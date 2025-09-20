@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 const Login = lazy(() => import("./pages/auth/Login"));
 const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const UpdatePassword = lazy(() => import("./pages/auth/UpdatePassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ProfilePage = lazy(() => import("./pages/user/ProfilePage"));
 const NotificationsPage = lazy(() => import("./pages/user/NotificationsPage"));
@@ -69,6 +70,16 @@ function AnimatedRoutes() {
             <RedirectIfLoggedIn>
               <PageWrapper>
                 <ForgotPassword />
+              </PageWrapper>
+            </RedirectIfLoggedIn>
+          }
+        />
+        <Route
+          path="/update-password"
+          element={
+            <RedirectIfLoggedIn>
+              <PageWrapper>
+                <UpdatePassword />
               </PageWrapper>
             </RedirectIfLoggedIn>
           }
