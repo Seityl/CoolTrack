@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import now, now_datetime
+from frappe.utils import now, now_datetime, get_datetime
 from frappe.model.document import Document
 
 from cooltrack.utils import (
@@ -38,7 +38,10 @@ class Sensor(Document):
         current_time = now_datetime()
         original_alert_status = frappe.db.get_value(self.doctype, self.name, 'alerts_enabled')
         
-        if self.alerts_disabled_end and current_time > self.alerts_disabled_end:
+        alerts_disabled_start = get_datetime(self.alerts_disabled_start) if self.alerts_disabled_start else None
+        alerts_disabled_end = get_datetime(self.alerts_disabled_end) if self.alerts_disabled_end else None
+
+        if alerts_disabled_end and current_time > alerts_disabled_end:
             self.db_set('alerts_disabled_start', None)
             self.db_set('alerts_disabled_end', None)
             self.db_set('alerts_enabled', 1)  # Re-enable alerts
@@ -46,9 +49,9 @@ class Sensor(Document):
             if original_alert_status != 1: # Create log if status changed
                 creat_alert_status_log(self.name, 1)
 
-        elif self.alerts_disabled_start and self.alerts_disabled_end:
-            # Check if we're currently in the disabled period
-            if self.alerts_disabled_start <= current_time <= self.alerts_disabled_end: 
+        elif alerts_disabled_start and alerts_disabled_end:
+            if alerts_disabled_start <= current_time <= alerts_disabled_end:
+                # Currently in disabled period
                 self.db_set('alerts_enabled', 0)  # Disable alerts
                 
                 if original_alert_status != 0: # Create log if status changed
@@ -56,7 +59,7 @@ class Sensor(Document):
 
             else:
                 self.db_set('alerts_enabled', 1)  # Enable alerts
-                
+
                 if original_alert_status != 1: # Create log if status changed
                     creat_alert_status_log(self.name, 1)
         
