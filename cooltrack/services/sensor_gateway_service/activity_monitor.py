@@ -36,13 +36,19 @@ class ActivityMonitor:
         )
         self.monitor_thread.start()
         self.logger.info(f'Activity monitor started (timeout: {self.inactivity_timeout}s)')
-    
+        
     def stop_monitor(self) -> None:
         self.stop_monitoring.set()
-        if self.monitor_thread and self.monitor_thread.is_alive():
+        if (
+            self.monitor_thread
+            and self.monitor_thread.is_alive()
+            and threading.current_thread() != self.monitor_thread
+        ):
             self.monitor_thread.join(timeout=5)
             self.logger.info('Activity monitor stopped')
-    
+        else:
+            self.logger.debug('Skipped join on current monitor thread')
+
     def _monitor_activity(self) -> None:
         check_interval: float = 60  # Check every minute
         
