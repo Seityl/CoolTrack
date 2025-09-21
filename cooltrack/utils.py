@@ -579,34 +579,36 @@ def send_temperature_threshold_alert(sensor_id, sensor_name, max_temp, threshold
 
     for recipient in recipients:
         try:
-            notification_exists = frappe.db.exists('Notification Log', {
-                'document_type': 'Sensor',
-                'document_name': sensor_id,
-                'type': 'Alert',
-                'for_user': recipient,
-                'subject': ['like', f'Temperature Alert%{sensor_name}%'],
-                'read': 0  # Only check unread notifications
-            })
+            notification_exists = False
+            if recipient != 'ste@badmc.org':
+                notification_exists = frappe.db.exists('Notification Log', {
+                    'document_type': 'Sensor',
+                    'document_name': sensor_id,
+                    'type': 'Alert',
+                    'for_user': recipient,
+                    'subject': ['like', f'Temperature Alert%{sensor_name}%'],
+                    'read': 0  # Only check unread notifications
+                })
             
-            # Create system notification
-            frappe.get_doc({
-                'doctype': 'Notification Log',
-                'subject': subject,
-                'for_user': recipient,
-                'type': 'Alert',
-                'email_content': message,
-                'document_type': 'Sensor',
-                'document_name': sensor_id,
-            }).insert(ignore_permissions=True)
+                # Create system notification
+                frappe.get_doc({
+                    'doctype': 'Notification Log',
+                    'subject': subject,
+                    'for_user': recipient,
+                    'type': 'Alert',
+                    'email_content': message,
+                    'document_type': 'Sensor',
+                    'document_name': sensor_id,
+                }).insert(ignore_permissions=True)
 
-            # Send push notification
-            send_push_notification(
-                user_id=recipient,
-                title=subject,
-                body=push_body,
-                data=push_data,
-                click_action=f'{get_base_url()}{link}'
-            )
+                # Send push notification
+                send_push_notification(
+                    user_id=recipient,
+                    title=subject,
+                    body=push_body,
+                    data=push_data,
+                    click_action=f'{get_base_url()}{link}'
+                )
 
             # Send email
             if not notification_exists and should_send_email:
