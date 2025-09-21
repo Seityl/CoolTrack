@@ -74,6 +74,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
+      {/* Mobile overlay */}
+      {isMobile && sidebarVisible && (
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            zIndex: 998,
+            transition: "opacity 0.3s ease",
+          }}
+          onClick={handleClose}
+        />
+      )}
+
       <Box
         position="fixed"
         top={`${topMenuHeight}px`}
@@ -95,6 +112,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             : `translateX(-${responsiveSidebarWidth}px)`,
           transition: "transform 0.3s ease-in-out",
           WebkitOverflowScrolling: "touch", // iOS smooth scrolling
+          // Prevent initial flash
+          visibility: sidebarVisible ? "visible" : "hidden",
         }}
       >
         <Flex direction="column" justify="between" height="100%">

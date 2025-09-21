@@ -4,25 +4,24 @@ import ProtectedRoute from "./utils/auth/ProtectedRoute";
 import "@radix-ui/themes/styles.css";
 import { Theme, Spinner, Flex } from "@radix-ui/themes";
 import Workspace from "./components/layout/Workspace";
-import { Suspense, lazy, ReactNode, JSX } from "react";
+import { Suspense, ReactNode, JSX, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-
-const Login = lazy(() => import("./pages/auth/Login"));
-const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
-const UpdatePassword = lazy(() => import("./pages/auth/UpdatePassword"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const ProfilePage = lazy(() => import("./pages/user/ProfilePage"));
-const NotificationsPage = lazy(() => import("./pages/user/NotificationsPage"));
-const GatewayPage = lazy(() => import("./pages/gateway/GatewayPage"));
-const SensorList = lazy(() => import("./pages/sensor/SensorList"));
-const SensorPage = lazy(() => import("./pages/sensor/SensorPage"));
-const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const HistoryPage = lazy( () => import("./pages/HistoryPage"));
-const LogList = lazy(() => import("./pages/LogList"));
-const AlertList = lazy(() => import("./pages/alerts/AlertList"));
-const AlertPage = lazy(() => import("./pages/alerts/AlertPage"));
-const MaintenanceList = lazy(() => import("./pages/maintenance/MaintenaceList"))
-const MaintenancePage = lazy(() => import("./pages/maintenance/MaintenancePage"))
+import Login from "./pages/auth/Login";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import UpdatePassword from "./pages/auth/UpdatePassword";
+import Dashboard from "./pages/Dashboard";
+import ProfilePage from "./pages/user/ProfilePage";
+import NotificationsPage from "./pages/user/NotificationsPage";
+import GatewayPage from "./pages/gateway/GatewayPage";
+import SensorList from "./pages/sensor/SensorList";
+import SensorPage from "./pages/sensor/SensorPage";
+import SettingsPage from "./pages/SettingsPage";
+import HistoryPage from "./pages/HistoryPage";
+import LogList from "./pages/LogList";
+import AlertList from "./pages/alerts/AlertList";
+import AlertPage from "./pages/alerts/AlertPage";
+import MaintenanceList from "./pages/maintenance/MaintenaceList";
+import MaintenancePage from "./pages/maintenance/MaintenancePage";
 
 interface RedirectIfLoggedInProps {
   children: JSX.Element;
@@ -47,6 +46,51 @@ const PageWrapper = ({ children }: PageWrapperProps) => (
     {children}
   </motion.div>
 );
+
+const PageLoader = () => (
+  <Flex 
+    height="100vh" 
+    align="center" 
+    justify="center"
+    style={{
+      background: "var(--color-panel-solid)",
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999
+    }}
+  >
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Spinner size="3" />
+    </motion.div>
+  </Flex>
+);
+
+// App initialization component to handle loading states
+const AppInitializer = ({ children }: { children: ReactNode }) => {
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    // Small delay to ensure proper initialization
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!isInitialized) {
+    return <PageLoader />;
+  }
+
+  return <>{children}</>;
+};
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -130,15 +174,11 @@ function App() {
           siteName={getSiteName()}
         >
           <Router>
-            <Suspense
-              fallback={
-                <Flex height="100vh" align="center" justify="center">
-                  <Spinner size="3" />
-                </Flex>
-              }
-            >
-              <AnimatedRoutes />
-            </Suspense>
+            <AppInitializer>
+              <Suspense fallback={<PageLoader />}>
+                <AnimatedRoutes />
+              </Suspense>
+            </AppInitializer>
           </Router>
         </FrappeProvider>
       </Theme>

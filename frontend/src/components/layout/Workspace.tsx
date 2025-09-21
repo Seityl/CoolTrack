@@ -8,8 +8,24 @@ const Workspace = () => {
   const sidebarWidth = 200;
   const topMenuHeight = 50;
 
-  const [isMobile, setIsMobile] = useState(false);
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  // Initialize states properly to avoid flash
+  const [isMobile, setIsMobile] = useState(() => {
+    // Initialize with actual window width if available
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false; // Default to desktop
+  });
+  
+  const [sidebarVisible, setSidebarVisible] = useState(() => {
+    // Initialize sidebar visibility based on mobile state
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true; // Default to visible for desktop
+  });
+
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -18,13 +34,34 @@ const Workspace = () => {
       setSidebarVisible(!mobile);
     };
 
+    // Set initialized flag after first render
+    setIsInitialized(true);
+    
+    // Set initial state based on current window size
     handleResize();
+    
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Add a brief loading state to prevent flash
+  if (!isInitialized) {
+    return (
+      <Flex direction="column" height="100vh" style={{ backgroundColor: "var(--color-background)" }}>
+        <Box
+          style={{
+            height: `${topMenuHeight}px`,
+            backgroundColor: "var(--color-panel-solid)",
+            borderBottom: "1px solid var(--gray-5)",
+          }}
+        />
+        <Box style={{ flex: 1, backgroundColor: "var(--color-background)" }} />
+      </Flex>
+    );
+  }
+
   return (
-    <Flex direction="column" height="100vh">
+    <Flex direction="column" height="100vh" style={{ backgroundColor: "var(--color-background)" }}>
       <TopMenu
         topMenuHeight={topMenuHeight}
         isMobile={isMobile}
@@ -45,6 +82,8 @@ const Workspace = () => {
           marginLeft: !isMobile && sidebarVisible ? `${sidebarWidth}px` : 0,
           marginTop: `${topMenuHeight}px`,
           transition: "margin-left 0.3s ease",
+          minHeight: `calc(100vh - ${topMenuHeight}px)`,
+          backgroundColor: "var(--color-background)",
         }}
       >
         <Outlet />
