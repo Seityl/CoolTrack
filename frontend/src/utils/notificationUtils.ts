@@ -3,7 +3,7 @@ export interface Notification {
   subject: string;
   message: string | null;
   created_on: string;
-  seen: boolean;
+  read: boolean;
 }
 
 export interface NotificationResponse {
@@ -68,7 +68,7 @@ export const formatDetailedDate = (dateString: string): string => {
  * @returns Number of unread notifications
  */
 export const countUnreadNotifications = (notifications: Notification[]): number => {
-  return notifications.filter(n => !n.seen).length;
+  return notifications.filter(n => !n.read).length; // Changed from 'seen' to 'read'
 };
 
 /**
@@ -84,9 +84,9 @@ export const getRecentNotifications = (notifications: Notification[], count: num
 /**
  * Filters notifications by read status
  * @param notifications - Array of notifications
- * @param seen - Whether to filter for seen (true) or unseen (false) notifications
+ * @param read - Whether to filter for read (true) or unread (false) notifications
  * @returns Filtered array of notifications
  */
-export const filterNotificationsByStatus = (notifications: Notification[], seen: boolean): Notification[] => {
-  return notifications.filter(n => n.seen === seen);
+export const filterNotificationsByStatus = (notifications: Notification[], read: boolean): Notification[] => {
+  return notifications.filter(n => n.read === read); // Changed from 'seen' to 'read'
 };

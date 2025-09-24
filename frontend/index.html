@@ -9,13 +9,19 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>window.csrf_token = '{{ csrf_token }}';
+    <script>
+        // Initialize frappe object first
         if (!window.frappe) window.frappe = {};
-    
-        window.app_name = "{{ app_name }}";
-    
+        
+        // Set boot data
         frappe.boot = JSON.parse({{ boot }});
-      </script>
+        
+        // Set app name
+        window.app_name = "{{ app_name }}";
+        
+        // Now safely access the CSRF token
+        window.csrfToken = frappe.boot.csrf_token;
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

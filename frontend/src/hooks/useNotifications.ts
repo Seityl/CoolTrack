@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk";
+import { useFrappeAuth, useFrappeGetCall } from "frappe-react-sdk";
 import { 
   NotificationResponse, 
   Notification,
@@ -32,7 +32,7 @@ interface UseNotificationsReturn {
   refreshNotifications: () => void;
   
   // Utilities
-  getNotificationsByStatus: (seen: boolean) => Notification[];
+  getNotificationsByStatus: (read: boolean) => Notification[];
 }
 
 export const useNotifications = (options: UseNotificationsOptions = {}): UseNotificationsReturn => {
@@ -44,8 +44,10 @@ export const useNotifications = (options: UseNotificationsOptions = {}): UseNoti
 
   const { currentUser } = useFrappeAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<any>(null);
 
-  // Fetch notifications
+  // Fetch notifications using Frappe React SDK
   const { 
     data, 
     mutate, 
@@ -59,12 +61,6 @@ export const useNotifications = (options: UseNotificationsOptions = {}): UseNoti
       revalidateOnFocus
     }
   );
-
-  // Mark single notification as read
-  const { call: markAsReadCall } = useFrappePostCall('cooltrack.api.v1.update_notification');
-  
-  // Mark all notifications as read
-  const { call: markAllAsReadCall } = useFrappePostCall('cooltrack.api.v1.mark_all_notifications_read');
 
   const notifications = data?.message ?? [];
   const recentNotifications = getRecentNotifications(notifications, recentCount);
@@ -88,25 +84,87 @@ export const useNotifications = (options: UseNotificationsOptions = {}): UseNoti
     return () => clearInterval(interval);
   }, [mutate, autoRefreshInterval]);
 
+  // Helper function to make authenticated GET requests like the SDK does
+  const makeFrappeGetRequest = async (method: string, args: Record<string, any> = {}) => {
+    const url = new URL(`/api/method/${method}`, window.location.origin);
+    
+    // Add parameters to URL
+    Object.entries(args).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value));
+      }
+    });
+
+    console.log('Making Frappe GET request to:', url.toString());
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Request failed with status ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.exception || errorMessage;
+      } catch (e) {
+        // If we can't parse error JSON, use the default message
+      }
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('Frappe GET request successful:', result);
+    return result;
+  };
+
   // Mark single notification as read
   const markAsRead = async (notificationName: string): Promise<void> => {
+    setActionLoading(true);
+    setActionError(null);
+    
     try {
-      await markAsReadCall({ notification: notificationName });
-      mutate(); // Refresh data after marking as read
+      await makeFrappeGetRequest('cooltrack.api.v1.update_notification', {
+        notification: notificationName
+      });
+      
+      console.log('Mark as read completed for:', notificationName);
+      mutate(); // Refresh notifications
     } catch (error) {
       console.error("Error marking notification as read:", error);
+      setActionError(error);
       throw error;
+    } finally {
+      setActionLoading(false);
     }
   };
 
   // Mark all notifications as read
   const markAllAsRead = async (): Promise<void> => {
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    
+    setActionLoading(true);
+    setActionError(null);
+    
     try {
-      await markAllAsReadCall({ user_email: currentUser });
-      mutate(); // Refresh data after marking all as read
+      await makeFrappeGetRequest('cooltrack.api.v1.mark_all_notifications_read', {
+        user_email: currentUser
+      });
+      
+      console.log('Mark all as read completed for:', currentUser);
+      mutate(); // Refresh notifications
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
+      setActionError(error);
       throw error;
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -116,8 +174,8 @@ export const useNotifications = (options: UseNotificationsOptions = {}): UseNoti
   };
 
   // Get notifications by status (utility function)
-  const getNotificationsByStatus = (seen: boolean): Notification[] => {
-    return filterNotificationsByStatus(notifications, seen);
+  const getNotificationsByStatus = (read: boolean): Notification[] => {
+    return filterNotificationsByStatus(notifications, read);
   };
 
   return {
@@ -129,8 +187,8 @@ export const useNotifications = (options: UseNotificationsOptions = {}): UseNoti
     unreadCount,
     
     // Loading states
-    isLoading,
-    error,
+    isLoading: isLoading || actionLoading,
+    error: error || actionError,
     
     // Actions
     markAsRead,
