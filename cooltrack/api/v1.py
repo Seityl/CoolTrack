@@ -164,11 +164,11 @@ def get_notifications(user_email:str=None):
     )
     return notifications
 
-@frappe.whitelist(methods=["POST", 'GET'])
-def update_notification(notification: str):
-    if not frappe.db.exists('Notification Log', notification):
-        frappe.throw(_(f'Notification {notification} not found'))
-    notification_doc = frappe.get_doc('Notification Log', notification)
+@frappe.whitelist(methods=["POST"])
+def mark_notification_read(notification_name: str):
+    if not frappe.db.exists('Notification Log', notification_name):
+        frappe.throw(_(f'Notification {notification_name} not found'))
+    notification_doc = frappe.get_doc('Notification Log', notification_name)
     notification_doc.read = 1
     notification_doc.save(ignore_permissions=True)
     

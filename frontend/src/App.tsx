@@ -156,21 +156,25 @@ function AnimatedRoutes() {
 }
 
 function App() {
-  const getSiteName = (): string => {
-    // @ts-expect-error - frappe.boot might not exist on window
-    if (window.frappe?.boot?.versions?.frappe.startsWith("14")) {
-      return import.meta.env.VITE_SITE_NAME;
-    } else {
-      // @ts-expect-error - frappe.boot might not exist on window
-      return window.frappe?.boot?.sitename ?? import.meta.env.VITE_SITE_NAME;
+  // We not need to pass sitename if the Frappe version is v14.
+  const getSiteName = () => {
+    // @ts-ignore
+    if (window.frappe?.boot?.versions?.frappe.startsWith('14')) {
+      return import.meta.env.VITE_SITE_NAME
     }
-  };
+    // @ts-ignore
+    else {
+      // @ts-ignore
+      return window.frappe?.boot?.sitename ?? import.meta.env.VITE_SITE_NAME
+    }
+  }
 
   return (
     <div className="App">
       <Theme appearance="light" accentColor="blue" grayColor="auto">
         <FrappeProvider
-          socketPort={import.meta.env.VITE_SOCKET_PORT}
+          url={import.meta.env.VITE_FRAPPE_PATH ?? ''}
+          socketPort={import.meta.env.VITE_SOCKET_PORT ? import.meta.env.VITE_SOCKET_PORT : undefined}
           siteName={getSiteName()}
         >
           <Router>
