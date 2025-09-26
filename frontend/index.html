@@ -1,27 +1,27 @@
 <!doctype html>
+
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link href="/src/index.css" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="/src/assets/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cool Track</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script>
-        // Initialize frappe object first
-        if (!window.frappe) window.frappe = {};
-        
-        // Set boot data
-        frappe.boot = JSON.parse({{ boot }});
-        
-        // Set app name
-        window.app_name = "{{ app_name }}";
-        
-        // Now safely access the CSRF token
-        window.csrfToken = frappe.boot.csrf_token;
-    </script>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link href="/src/index.css" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="/src/assets/favicon.ico" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cool Track</title>
+  <meta name="description" content="Temperature monitoring, logging and alerts.">
+</head>
+
+<body>
+  <div id="root" vaul-drawer-wrapper="true"></div>
+  <script>window.csrf_token = '{{ csrf_token }}';
+    if (!window.frappe) window.frappe = {};
+
+    window.app_name = "{{ app_name }}";
+
+    frappe.boot = JSON.parse({{ boot }});
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
