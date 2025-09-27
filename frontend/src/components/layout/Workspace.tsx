@@ -3,20 +3,16 @@ import { Flex, Box } from "@radix-ui/themes";
 import { Outlet } from "react-router-dom";
 import TopMenu from "./TopMenu/TopMenu";
 import Sidebar from "./SideBar/Sidebar";
+import { useMobile } from "../../hooks/useMobile";
 
 const Workspace = () => {
   const sidebarWidth = 200;
   const topMenuHeight = 50;
 
-  // Initialize states properly to avoid flash
-  const [isMobile, setIsMobile] = useState(() => {
-    // Initialize with actual window width if available
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768;
-    }
-    return false; // Default to desktop
-  });
-  
+  // Use the reusable useMobile hook
+  const isMobile = useMobile(768);
+
+  // Initialize sidebar visibility based on mobile state
   const [sidebarVisible, setSidebarVisible] = useState(() => {
     // Initialize sidebar visibility based on mobile state
     if (typeof window !== 'undefined') {
@@ -28,20 +24,13 @@ const Workspace = () => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      setSidebarVisible(!mobile);
-    };
+    // Update sidebar visibility when mobile state changes
+    setSidebarVisible(!isMobile);
+  }, [isMobile]);
 
+  useEffect(() => {
     // Set initialized flag after first render
     setIsInitialized(true);
-    
-    // Set initial state based on current window size
-    handleResize();
-    
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Add a brief loading state to prevent flash
