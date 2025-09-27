@@ -1,13 +1,36 @@
+// Base Frappe Notification Log document structure
+export interface FrappeNotificationLog {
+  name: string;
+  subject: string;
+  email_content: string | null;
+  creation: string;
+  read: 0 | 1; // Frappe uses 0/1 for boolean fields
+  for_user: string;
+  type?: string;
+  document_type?: string;
+  document_name?: string;
+  // Standard Frappe fields
+  owner?: string;
+  modified?: string;
+  modified_by?: string;
+  idx?: number;
+  docstatus?: number;
+  parent?: string;
+  parentfield?: string;
+  parenttype?: string;
+}
+
+// Transformed notification structure for frontend use
 export interface Notification {
   name: string;
   subject: string;
   message: string | null;
   created_on: string;
   read: boolean;
-}
-
-export interface NotificationResponse {
-  message: Notification[];
+  for_user?: string;
+  type?: string;
+  document_type?: string;
+  document_name?: string;
 }
 
 /**
@@ -68,7 +91,7 @@ export const formatDetailedDate = (dateString: string): string => {
  * @returns Number of unread notifications
  */
 export const countUnreadNotifications = (notifications: Notification[]): number => {
-  return notifications.filter(n => !n.read).length; // Changed from 'seen' to 'read'
+  return notifications.filter(n => !n.read).length;
 };
 
 /**
@@ -88,5 +111,5 @@ export const getRecentNotifications = (notifications: Notification[], count: num
  * @returns Filtered array of notifications
  */
 export const filterNotificationsByStatus = (notifications: Notification[], read: boolean): Notification[] => {
-  return notifications.filter(n => n.read === read); // Changed from 'seen' to 'read'
+  return notifications.filter(n => n.read === read);
 };

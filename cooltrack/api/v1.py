@@ -147,25 +147,10 @@ def receive_sensor_data(**kwargs):
         frappe.local.response['http_status_code'] = 500
         return {'error': str(e)}
 
-@frappe.whitelist()
-def get_notifications(user_email:str=None):
-    if not user_email:
-        user_email = frappe.session.user
-    if not frappe.db.exists('User', user_email):
-        frappe.throw(_(f'User {user_email} not found'))
-    notifications = frappe.db.get_all(
-        'Notification Log',
-        filters={
-            'for_user': user_email,
-            'read': 0
-        },
-        fields=['name', 'subject', 'email_content as message', 'creation as created_on'],
-        order_by='creation desc'
-    )
-    return notifications
 
-@frappe.whitelist(methods=["POST"])
+@frappe.whitelist(methods=['POST'])
 def mark_notification_read(notification_name: str):
+    """Mark notifications as read"""
     if not frappe.db.exists('Notification Log', notification_name):
         frappe.throw(_(f'Notification {notification_name} not found'))
     notification_doc = frappe.get_doc('Notification Log', notification_name)
@@ -174,12 +159,20 @@ def mark_notification_read(notification_name: str):
     
     return {"success": True, "message": "Notification marked as read"}
 
-@frappe.whitelist(methods=["POST"])
-def mark_all_notifications_read(user_email):
+
+@frappe.whitelist(methods=['POST'])
+def mark_all_notifications_read():
+    """Mark all unread notifications as read for the current session user"""
+    user = frappe.session.user
+    # Validate user exists
+    if not frappe.db.exists('User', user):
+        frappe.throw(_(f'User {user} not found'))
+    
+    # Get all unread notifications for the current user
     unread_notifications = frappe.get_list(
         'Notification Log',
         filters={
-            'for_user': user_email,
+            'for_user': user,
             'read': 0
         },
         fields=['name']
@@ -188,8 +181,10 @@ def mark_all_notifications_read(user_email):
     if not unread_notifications:
         return {'message': 'No unread notifications found', 'count': 0}
     
+    # Extract notification names
     notification_names = [notif['name'] for notif in unread_notifications]
     
+    # Bulk update all notifications to read=1
     frappe.db.set_value(
         'Notification Log',
         {'name': ['in', notification_names]},
@@ -198,6 +193,7 @@ def mark_all_notifications_read(user_email):
         update_modified=True
     )
     
+    # Commit the changes
     frappe.db.commit()
     
     return {

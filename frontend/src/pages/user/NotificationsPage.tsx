@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Box, Flex, Text, Card } from "@radix-ui/themes";
 import { FaBell, FaCheck, FaSyncAlt } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingState } from '../../components/common/LoadingState';
 import { Toast } from '../../components/common/Toast';
+import { useMobile } from '../../hooks/useMobile';
 import { 
   formatDetailedDate, 
   stripHtmlTags
@@ -22,19 +23,40 @@ const NotificationsPage = () => {
     show: boolean;
   } | null>(null);
 
+  const isMobile = useMobile();
+
   const {
     notifications,
     unreadCount,
+    hasMore,
+    isLoadingMore,
     isLoading,
     error,
     markAsRead,
     markAllAsRead,
-    refreshNotifications
+    refreshNotifications,
+    loadMore
   } = useNotifications({
     autoRefreshInterval: 30000,
-    recentCount: 100, // Show all notifications on the page
+    pageSize: 20,
+    enablePagination: true,
     revalidateOnFocus: true
   });
+
+  // DEBUG: Add console logs to track what's happening
+  useEffect(() => {
+    console.log('🔍 NotificationsPage - Data changed:', {
+      notificationsLength: notifications.length,
+      notifications: notifications,
+      isLoading,
+      error,
+      unreadCount
+    });
+  }, [notifications, isLoading, error, unreadCount]);
+
+  // FIXED: Remove problematic memoization that was preventing re-renders
+  // The issue was that useMemo with [notifications] dependency wasn't triggering properly
+  const displayNotifications = notifications;
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, show: true });
@@ -81,31 +103,56 @@ const NotificationsPage = () => {
     }
   };
 
+  const handleLoadMore = async () => {
+    try {
+      await loadMore();
+    } catch (error) {
+      showToast("Failed to load more notifications", "error");
+    }
+  };
+
+  // DEBUG: Add a debug section to see what we have
+  const debugInfo = (
+    <Card style={{ margin: '1rem 0', padding: '1rem', backgroundColor: '#f0f0f0' }}>
+      <Text size="2" weight="bold">Debug Info:</Text>
+      <Text size="1">Notifications Length: {displayNotifications.length}</Text>
+      <Text size="1">Is Loading: {isLoading.toString()}</Text>
+      <Text size="1">Error: {error ? error.message : 'None'}</Text>
+      <Text size="1">Unread Count: {unreadCount}</Text>
+      <Text size="1">Has More: {hasMore.toString()}</Text>
+      {displayNotifications.length > 0 && (
+        <Text size="1">First Notification: {JSON.stringify(displayNotifications[0], null, 2)}</Text>
+      )}
+    </Card>
+  );
+
   // Loading state
   if (isLoading && !isRefreshing) {
     return (
       <PageLayout
         title="Notifications"
-        icon={<FaBell size={window.innerWidth < 768 ? 20 : 24} />}
+        icon={<FaBell size={isMobile ? 20 : 24} />}
       >
         <LoadingState />
+        {debugInfo}
       </PageLayout>
     );
   }
 
   // Error state
-  if (error && !notifications.length) {
+  if (error && !displayNotifications.length) {
     return (
       <PageLayout
         title="Notifications"
-        icon={<FaBell size={window.innerWidth < 768 ? 20 : 24} />}
+        icon={<FaBell size={isMobile ? 20 : 24} />}
       >
         <ErrorState
           title="Failed to load notifications"
           message={error.message}
-          icon={<FaBell size={window.innerWidth < 768 ? 24 : 32} />}
+          icon={<FaBell size={isMobile ? 24 : 32} />}
           onRetry={handleRefresh}
         />
+        {debugInfo}
       </PageLayout>
     );
   }
@@ -115,22 +162,22 @@ const NotificationsPage = () => {
     <Flex gap="2" align="center" style={{ flexShrink: 0 }}>
       {unreadCount > 0 && (
         <ActionButton
-          icon={<FaCheck size={window.innerWidth < 768 ? 10 : 12} />}
+          icon={<FaCheck size={isMobile ? 10 : 12} />}
           label="Mark all read"
           onClick={handleMarkAllAsRead}
           variant="soft"
           color="green"
-          size={window.innerWidth < 768 ? "1" : "2"}
+          size={isMobile ? "1" : "2"}
           hideTextOnMobile={true}
         />
       )}
       <ActionButton
-        icon={<FaSyncAlt className={isRefreshing ? "animate-spin" : ""} size={window.innerWidth < 768 ? 12 : 14} />}
+        icon={<FaSyncAlt className={isRefreshing ? "animate-spin" : ""} size={isMobile ? 12 : 14} />}
         label="Refresh"
         onClick={handleRefresh}
         loading={isRefreshing}
         variant="soft"
-        size={window.innerWidth < 768 ? "2" : "3"}
+        size={isMobile ? "2" : "3"}
         hideTextOnMobile={true}
       />
     </Flex>
@@ -155,9 +202,11 @@ const NotificationsPage = () => {
 
       <PageLayout
         title="Notifications"
-        icon={<FaBell size={window.innerWidth < 768 ? 20 : 24} />}
+        icon={<FaBell size={isMobile ? 20 : 24} />}
         actions={headerActions}
       >
+        {/* DEBUG INFO - Remove this in production */}
+        {debugInfo}
 
         <AnimatePresence mode="wait">
           {isRefreshing ? (
@@ -175,113 +224,161 @@ const NotificationsPage = () => {
               key="content"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
             >
               <Flex direction="column" gap={{ initial: "3", sm: "4" }}>
-                {notifications.length > 0 ? (
-                  notifications.map((notification, index) => (
-                    <motion.div
-                      key={notification.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ 
-                        duration: 0.4, 
-                        delay: index * 0.1,
-                        ease: "easeOut"
-                      }}
-                    >
-                      <Card
-                        style={{
-                          border: `1px solid var(--gray-6)`,
-                          backgroundColor: 'white',
-                          transition: 'all 0.2s ease',
-                          cursor: 'pointer',
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <Box p={{ initial: "3", sm: "4", md: "5" }}>
-                          <Flex 
-                            justify="between" 
-                            align="start" 
-                            gap="3"
-                            direction={{ initial: "column", sm: "row" }}
+                {displayNotifications.length > 0 ? (
+                  <>
+                    <AnimatePresence>
+                      {displayNotifications.map((notification, index) => (
+                        <motion.div
+                          key={notification.name}
+                          layout
+                          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                          transition={{ 
+                            duration: 0.2,
+                            delay: Math.min(index * 0.03, 0.3),
+                            ease: "easeOut",
+                            layout: { duration: 0.2 }
+                          }}
+                        >
+                          <Card
+                            style={{
+                              border: !notification.read 
+                                ? `2px solid var(--blue-7)` 
+                                : `1px solid var(--gray-6)`,
+                              backgroundColor: !notification.read 
+                                ? 'var(--blue-1)' 
+                                : 'white',
+                              transition: 'all 0.2s ease',
+                              cursor: 'pointer',
+                              overflow: 'hidden'
+                            }}
                           >
-                            <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
-                              <Flex align="center" gap="2" mb="2">
-                                <Text 
-                                  size={{ initial: "2", sm: "3" }}
-                                  weight="medium"
-                                  style={{ 
-                                    color: 'var(--gray-12)',
-                                    wordWrap: "break-word",
-                                    overflowWrap: "break-word",
-                                    hyphens: "auto",
-                                    lineHeight: 1.4,
-                                    flex: 1
-                                  }}
-                                >
-                                  {stripHtmlTags(notification.subject)}
-                                </Text>
-                              </Flex>
-                              
-                              {notification.message ? (
-                                <Text 
-                                  size={{ initial: "1", sm: "2" }}
-                                  color="gray"
-                                  style={{ 
-                                    lineHeight: 1.5,
-                                    marginBottom: '12px',
-                                    wordWrap: "break-word",
-                                    overflowWrap: "break-word",
-                                    hyphens: "auto"
-                                  }}
-                                >
-                                  {stripHtmlTags(notification.message)}
-                                </Text>
-                              ) : (
-                                <Text 
-                                  size={{ initial: "1", sm: "2" }} 
-                                  color="gray" 
-                                  style={{ marginBottom: '12px' }}
-                                >
-                                  No message content.
-                                </Text>
-                              )}
-                              
-                              <Text 
-                                size="1" 
-                                color="gray" 
-                                style={{ 
-                                  fontStyle: 'italic',
-                                  fontSize: window.innerWidth < 768 ? '11px' : '12px',
-                                  lineHeight: 1.3
-                                }}
+                            <Box p={{ initial: "3", sm: "4", md: "5" }}>
+                              <Flex 
+                                justify="between" 
+                                align="start" 
+                                gap="3"
+                                direction={{ initial: "column", sm: "row" }}
                               >
-                                {formatDetailedDate(notification.created_on)}
-                              </Text>
-                            </Flex>
-                            
-                            {!notification.seen && (
-                              <ActionButton
-                                icon={<FaCheck size={window.innerWidth < 768 ? 10 : 12} />}
-                                label="Mark read"
-                                onClick={() => handleMarkAsRead(notification.name)}
-                                variant="soft"
-                                color="blue"
-                                size={window.innerWidth < 768 ? "1" : "2"}
-                                hideTextOnMobile={true}
-                              />
-                            )}
+                                <Flex direction="column" style={{ flex: 1, minWidth: 0 }}>
+                                  <Flex align="center" gap="2" mb="2">
+                                    <Text 
+                                      size={{ initial: "2", sm: "3" }}
+                                      weight={!notification.read ? "bold" : "medium"}
+                                      style={{ 
+                                        color: !notification.read 
+                                          ? 'var(--gray-12)' 
+                                          : 'var(--gray-11)',
+                                        wordWrap: "break-word",
+                                        overflowWrap: "break-word",
+                                        hyphens: "auto",
+                                        lineHeight: 1.4,
+                                        flex: 1
+                                      }}
+                                    >
+                                      {stripHtmlTags(notification.subject)}
+                                    </Text>
+                                    {!notification.read && (
+                                      <Box
+                                        style={{
+                                          width: '8px',
+                                          height: '8px',
+                                          borderRadius: '50%',
+                                          backgroundColor: 'var(--blue-9)',
+                                          flexShrink: 0
+                                        }}
+                                      />
+                                    )}
+                                  </Flex>
+                                  
+                                  {notification.message ? (
+                                    <Text 
+                                      size={{ initial: "1", sm: "2" }}
+                                      color="gray"
+                                      style={{ 
+                                        lineHeight: 1.5,
+                                        marginBottom: '12px',
+                                        wordWrap: "break-word",
+                                        overflowWrap: "break-word",
+                                        hyphens: "auto"
+                                      }}
+                                    >
+                                      {stripHtmlTags(notification.message)}
+                                    </Text>
+                                  ) : (
+                                    <Text 
+                                      size={{ initial: "1", sm: "2" }} 
+                                      color="gray" 
+                                      style={{ marginBottom: '12px' }}
+                                    >
+                                      No message content.
+                                    </Text>
+                                  )}
+                                  
+                                  <Text 
+                                    size="1" 
+                                    color="gray" 
+                                    style={{ 
+                                      fontStyle: 'italic',
+                                      fontSize: isMobile ? '11px' : '12px',
+                                      lineHeight: 1.3
+                                    }}
+                                  >
+                                    {formatDetailedDate(notification.created_on)}
+                                  </Text>
+                                </Flex>
+                                
+                                {!notification.read && (
+                                  <ActionButton
+                                    icon={<FaCheck size={isMobile ? 10 : 12} />}
+                                    label="Mark read"
+                                    onClick={() => handleMarkAsRead(notification.name)}
+                                    variant="soft"
+                                    color="blue"
+                                    size={isMobile ? "1" : "2"}
+                                    hideTextOnMobile={true}
+                                  />
+                                )}
+                              </Flex>
+                            </Box>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+
+                    {/* Load More Button */}
+                    {hasMore && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Card style={{ textAlign: 'center', padding: '1rem' }}>
+                          <Flex direction="column" align="center" gap="3">
+                            <ActionButton
+                              icon={<FaSyncAlt className={isLoadingMore ? "animate-spin" : ""} size={isMobile ? 12 : 14} />}
+                              label={isLoadingMore ? "Loading..." : "Load More"}
+                              onClick={handleLoadMore}
+                              loading={isLoadingMore}
+                              variant="soft"
+                              color="blue"
+                              size={isMobile ? "2" : "3"}
+                              disabled={isLoadingMore}
+                            />
                           </Flex>
-                        </Box>
-                      </Card>
-                    </motion.div>
-                  ))
+                        </Card>
+                      </motion.div>
+                    )}
+                  </>
                 ) : (
                   <EmptyState
                     title="No notifications yet"
                     description="We'll notify you when there's something new"
-                    icon={<FaBell size={window.innerWidth < 768 ? 24 : 32} />}
+                    icon={<FaBell size={isMobile ? 24 : 32} />}
                   />
                 )}
               </Flex>

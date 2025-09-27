@@ -23,7 +23,7 @@ export const NotificationButton: React.FC<NotificationButtonProps> = ({
   const navigate = useNavigate();
   
   const {
-    recentNotifications,
+    unreadNotifications,
     unreadCount,
     markAsRead,
     refreshNotifications
@@ -108,29 +108,24 @@ export const NotificationButton: React.FC<NotificationButtonProps> = ({
       >
         {/* Header */}
         <Box style={{ padding: "1rem 1rem 0.5rem 1rem", borderBottom: "1px solid var(--gray-4)" }}>
-          <Flex justify="between" align="center">
+          <Flex justify="start" align="center">
             <Text size="3" weight="bold" style={{ color: "var(--gray-12)" }}>
               Notifications
             </Text>
-            {unreadCount > 0 && (
-              <Badge color="blue" variant="soft" size="1">
-                {unreadCount} new
-              </Badge>
-            )}
           </Flex>
         </Box>
 
         {/* Notifications List */}
         <Box style={{ padding: "0.5rem 0" }}>
-          {recentNotifications.length > 0 ? (
-            recentNotifications.map((notification) => (
+          {unreadNotifications.length > 0 ? (
+            unreadNotifications.slice(0, 5).map((notification) => (
               <React.Fragment key={notification.name}>
                 <DropdownMenu.Item
                   style={{
                     padding: "1rem",
                     cursor: "pointer",
-                    backgroundColor: !notification.seen ? "var(--blue-1)" : "transparent",
-                    borderLeft: !notification.seen ? "3px solid var(--blue-9)" : "3px solid transparent",
+                    backgroundColor: !notification.read ? "var(--blue-1)" : "transparent",
+                    borderLeft: !notification.read ? "3px solid var(--blue-9)" : "3px solid transparent",
                     transition: "background-color 0.2s ease",
                     margin: "0.25rem 0",
                     borderRadius: "4px"
@@ -142,10 +137,10 @@ export const NotificationButton: React.FC<NotificationButtonProps> = ({
                     <Flex direction="column" gap="1" style={{ flex: 1 }}>
                       <Text 
                         size="2" 
-                        weight={!notification.seen ? "bold" : "medium"}
+                        weight={!notification.read ? "bold" : "medium"}
                         style={{ 
                           lineHeight: "1.4",
-                          color: !notification.seen ? "var(--gray-12)" : "var(--gray-11)",
+                          color: !notification.read ? "var(--gray-12)" : "var(--gray-11)",
                           paddingTop: "0.25rem"
                         }}
                       >
@@ -165,7 +160,7 @@ export const NotificationButton: React.FC<NotificationButtonProps> = ({
                       </Text>
                     </Flex>
                     
-                    {!notification.seen && (
+                    {!notification.read && (
                       <Button
                         size="1"
                         variant="ghost"
@@ -201,7 +196,7 @@ export const NotificationButton: React.FC<NotificationButtonProps> = ({
         </Box>
 
         {/* Footer */}
-        {recentNotifications.length > 0 && (
+        {unreadNotifications.length > 0 && (
           <>
             <Separator style={{ margin: "0", backgroundColor: "var(--gray-4)" }} />
             <Box style={{ padding: "0.5rem" }}>
